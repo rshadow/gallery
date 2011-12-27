@@ -1,8 +1,48 @@
-#use strict;
+use strict;
 use warnings;
 use utf8;
 
 package Gallery;
+
+=head1 NAME
+
+Gallery - perl module for nginx.
+
+=head SYNOPSIS
+
+Example of nginx http section:
+
+    http{
+        ...
+        perl_modules  <PATH_TO_LIB>;
+        perl_require  Gallery.pm;
+    }
+
+Example of nginx server section:
+
+    server {
+        listen                  80;
+
+        server_name             gallery.localhost www.gallery.localhost;
+
+        access_log              /var/log/nginx/gallery.access.log;
+        error_log               /var/log/nginx/gallery.error.log;
+
+        gzip                    on;
+        gzip_min_length         1000;
+        gzip_disable            msie6;
+        gzip_proxied            expired no-cache no-store private auth;
+        gzip_types              image/png image/gif image/jpeg image/jpg
+                                image/xbm image/gd image/gd2;
+
+        location / {
+            perl  Gallery::handler;
+            root <PATH_FOR_IMAGE_GALLERY>;
+        }
+    }
+=cut
+
+our $VERSION=0.01;
 
 use constant ICON_SIZE  => 100;
 
@@ -299,6 +339,12 @@ fLs9AAAAAElFTkSuQmCC', 100, 100, 'png');
 
 }
 
+=head2 _raw_folder_base64
+
+Return PNG image for non recognized images encoded in base64
+
+=cut
+
 sub _raw_image_generic
 {
     return ('
@@ -346,3 +392,26 @@ HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 100, 100, 'png');
 }
 
 1;
+
+=head1 AUTHORS
+
+Copyright (C) 2011 Dmitry E. Oboukhov <unera@debian.org>,
+
+Copyright (C) 2011 Roman V. Nikolaev <rshadow@rambler.ru>
+
+=head1 LICENSE
+
+This program is free software: you can redistribute  it  and/or  modify  it
+under the terms of the GNU General Public License as published by the  Free
+Software Foundation, either version 3 of the License, or (at  your  option)
+any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even  the  implied  warranty  of  MERCHANTABILITY  or
+FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public  License  for
+more details.
+
+You should have received a copy of the GNU  General  Public  License  along
+with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+=cut
