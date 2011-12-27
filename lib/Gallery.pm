@@ -207,7 +207,6 @@ sub handler {
         $template,
         'Gallery: '.$r->uri,
         \@index,
-        DIV_SIZE
     );
 
     $r->send_http_header("text/html");
@@ -218,7 +217,7 @@ sub handler {
 
 {
     our $template = <<'EOF';
-% my ($title, $index, $div_size) = @_;
+% my ($title, $index) = @_;
 <!DOCTYPE html>
 <html lang="ru">
 <head>
