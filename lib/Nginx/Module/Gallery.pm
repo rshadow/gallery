@@ -52,9 +52,11 @@ use nginx;
 
 use Mojo::Template;
 use MIME::Base64;
-use GD;
 use File::Spec;
 use File::Basename;
+
+use GD;
+GD::Image->trueColor(1);
 
 sub _raw_folder_base64;
 sub _raw_image_generic_base64;
@@ -97,6 +99,8 @@ Send directory index to client
 sub show_index
 {
     my $r = shift;
+
+
 
     # Get directory index
     my @index = glob File::Spec->catfile($r->filename, '*');
@@ -163,7 +167,7 @@ sub show_index
         elsif( $filename =~ m{^.*\.(?:png|jpg|jpeg|gif|xbm|gd|gd2|ico)$}i )
         {
             # Get image
-            open my $f, '<', $path;
+            open my $f, '<:raw', $path;
             local $/;
             my $raw = <$f>;
             close $f;
@@ -196,7 +200,11 @@ sub show_index
                     $height = ICON_SIZE;
                 }
 
-                my $icon    = GD::Image->new( $width, $height, 1 );
+                # Create icon image
+                my $icon = GD::Image->new( $width, $height, 1 );
+                # Fill white
+                $icon->fill(0, 0, $icon->colorAllocate(255,255,255) );
+                # Copy and resize from original image
                 $icon->copyResampled($image, 0, 0, 0, 0,
                     $width, $height,
                     $i_width, $i_height
