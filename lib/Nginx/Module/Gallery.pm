@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use utf8;
 
-package Gallery;
+package Nginx::Module::Gallery;
 
 =head1 NAME
 
@@ -14,8 +14,9 @@ Example of nginx http section:
 
     http{
         ...
-        perl_modules  <PATH_TO_LIB>;
-        perl_require  Gallery.pm;
+        # Path to Gallery.pm
+        perl_modules  /usr/share/perl5/;
+        perl_require  Nginx/Module/Gallery.pm;
     }
 
 Example of nginx server section:
@@ -36,8 +37,9 @@ Example of nginx server section:
                                 image/xbm image/gd image/gd2;
 
         location / {
-            perl  Gallery::handler;
-            root <PATH_FOR_IMAGE_GALLERY>;
+            perl  Nginx::Module::Gallery::handler;
+            # Path to image files
+            root /usr/share/images;
         }
     }
 =cut
@@ -66,12 +68,123 @@ sub handler {
     # Stop if header only
     return OK if $r->header_only;
 
-    # Just send file
-    if( -f _ )
-    {
-        $r->sendfile( $r->filename );
-        return OK;
-    }
+    # show file
+    return show_image($r) if -f _;
+    # show directory index
+    return show_index($r);
+}
+
+{
+    our $template = <<'EOF';
+% my ($title, $index) = @_;
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title><%= $title || '' =%></title>
+    <style type="text/css">
+        body {
+            font: 10pt sans-serif;
+        }
+        a {
+            text-decoration: none;
+            color: #000;
+        }
+        div.item {
+            max-width: 128px;
+            height: 128px;
+            max-height: 128px;
+            float: left;
+            text-align: center;
+            margin: 8px;
+        }
+        details.filename {
+            word-wrap: break-word;
+
+        }
+        details.extended {
+            font-size: 8pt;
+            color: #667;
+        }
+        img {
+            box-shadow: 0px 0px 3px 2px rgba(0,0,0,0.6);
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+    </header>
+    <article>
+        <% for my $item (@$index) { %>
+            <div class="item">
+                <% if( $item->{type} eq 'dir' ) { %>
+                    <a href="<%= $item->{href} %>">
+                        <img
+                            width="<%= $item->{icon}{width} %>"
+                            height="<%= $item->{icon}{height} %>"
+                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+                        />
+                        <br/>
+                        <details class="filename" open="open">
+                            <%= $item->{filename} %>
+                        </details>
+                    </a>
+                <% } elsif( $item->{type} eq 'file' ) { %>
+                    <details class="filename" open="open">
+                        <%= $item->{filename} %>
+                    </details>
+                <% } elsif( $item->{type} eq 'img' ) { %>
+                    <a href="<%= $item->{href} %>">
+                        <img
+                            width="<%= $item->{icon}{width} %>"
+                            height="<%= $item->{icon}{height} %>"
+                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+                        />
+                        <br/>
+                        <details class="filename" open="open">
+                            <%= $item->{filename} %>
+                        </details>
+                        <br/>
+                        <details class="extended" open="open">
+                            <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
+                            <br/>
+                            <%= $item->{image}{size} || 0 %> bytes
+                       </details>
+                    </a>
+                <% } %>
+            </div>
+        <% } %>
+    </article>
+    <footer>
+    </footer>
+</body>
+</html>
+EOF
+}
+
+=head2 show_image
+
+Send image to client
+
+=cut
+
+sub show_image
+{
+    my $r = shift;
+    $r->sendfile( $r->filename );
+    return OK;
+}
+
+=head2 show_index
+
+Send directory index to client
+
+=cut
+
+sub show_index
+{
+    my $r = shift;
 
     # Get directory index
     my @index = glob File::Spec->catfile($r->filename, '*');
@@ -215,95 +328,6 @@ sub handler {
     return OK;
 }
 
-{
-    our $template = <<'EOF';
-% my ($title, $index) = @_;
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <title><%= $title || '' =%></title>
-    <style type="text/css">
-        body {
-            font: 10pt sans-serif;
-        }
-        a {
-            text-decoration: none;
-            color: #000;
-        }
-        div.item {
-            max-width: 128px;
-            height: 128px;
-            max-height: 128px;
-            float: left;
-            text-align: center;
-            margin: 8px;
-        }
-        details.filename {
-            word-wrap: break-word;
-
-        }
-        details.extended {
-            font-size: 8pt;
-            color: #667;
-        }
-        img {
-            box-shadow: 0px 0px 3px 2px rgba(0,0,0,0.6);
-            border: none;
-        }
-    </style>
-</head>
-<body>
-    <header>
-    </header>
-    <article>
-        <% for my $item (@$index) { %>
-            <div class="item">
-                <% if( $item->{type} eq 'dir' ) { %>
-                    <a href="<%= $item->{href} %>">
-                        <img
-                            width="<%= $item->{icon}{width} %>"
-                            height="<%= $item->{icon}{height} %>"
-                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                        />
-                        <br/>
-                        <details class="filename" open="open">
-                            <%= $item->{filename} %>
-                        </details>
-                    </a>
-                <% } elsif( $item->{type} eq 'file' ) { %>
-                    <details class="filename" open="open">
-                        <%= $item->{filename} %>
-                    </details>
-                <% } elsif( $item->{type} eq 'img' ) { %>
-                    <a href="<%= $item->{href} %>">
-                        <img
-                            width="<%= $item->{icon}{width} %>"
-                            height="<%= $item->{icon}{height} %>"
-                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                        />
-                        <br/>
-                        <details class="filename" open="open">
-                            <%= $item->{filename} %>
-                        </details>
-                        <br/>
-                        <details class="extended" open="open">
-                            <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
-                            <br/>
-                            <%= $item->{image}{size} || 0 %> bytes
-                       </details>
-                    </a>
-                <% } %>
-            </div>
-        <% } %>
-    </article>
-    <footer>
-    </footer>
-</body>
-</html>
-EOF
-}
-
 =head2 _raw_folder_base64
 
 Return PNG image of folder encoded in base64
@@ -338,13 +362,13 @@ fLs9AAAAAElFTkSuQmCC', 100, 100, 'png');
 
 }
 
-=head2 _raw_folder_base64
+=head2 _raw_image_generic_base64
 
 Return PNG image for non recognized images encoded in base64
 
 =cut
 
-sub _raw_image_generic
+sub _raw_image_generic_base64
 {
     return ('
 iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAIzElEQVRYhe2ZMYyjx3XHf7t8JP+7
