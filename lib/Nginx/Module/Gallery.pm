@@ -56,9 +56,11 @@ use File::Spec;
 use File::Basename;
 
 use GD;
+# Enable truecolor
 GD::Image->trueColor(1);
 
 sub _raw_folder_base64;
+sub _raw_updir_base64;
 sub _raw_image_generic_base64;
 
 sub handler {
@@ -100,8 +102,6 @@ sub show_index
 {
     my $r = shift;
 
-
-
     # Get directory index
     my @index = glob File::Spec->catfile($r->filename, '*');
 
@@ -116,7 +116,7 @@ sub show_index
         my $updir = File::Spec->catdir( @updir );
         undef @updir;
 
-        my ($raw, $width, $height, $mime) = _raw_folder_base64;
+        my ($raw, $width, $height, $mime) = _raw_updir_base64;
 
         # Push upper directory link for non root directory
         push @dirs, {
@@ -287,8 +287,51 @@ H7B+oNAjqa4vfadA1HN4fTbAAnOlV0qsa3salKWMBm7XU1uaqK4pGPX+hnZC+VV1nA2obq10IMn7
 soNgJY71HgOLfQFU7kBcSg7dQHcZs9vF72XIbz+U3z/q2z94jsG8zW8/OJYL/yVfkk6KEfX6XF/1
 P4HwHxva2NCPjov+rwWDTDWnZof/I4wEJvrMTXfixfr/Op7GQmmFfgbQ840X97PwiwP0LzfOZoqf
 fLs9AAAAAElFTkSuQmCC', 100, 100, 'png');
-
 }
+
+=head2 _raw_updir_base64
+
+Return PNG image for updir encoded in base64
+
+=cut
+
+sub _raw_updir_base64
+{
+    return ('
+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
+AAAASUVORK5CYII=', 100, 100, 'png');
+}
+
 
 =head2 _raw_image_generic_base64
 
@@ -416,9 +459,13 @@ HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 100, 100, 'png');
                         </details>
                         <br/>
                         <details class="extended" open="open">
-                            <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
-                            <br/>
-                            <%= $item->{image}{size} || 0 %> bytes
+                            <% if(defined $item->{image}{width} and defined $item->{image}{height} ) { %>
+                                <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
+                                <br/>
+                            <% } %>
+                            <% if( defined $item->{image}{size} ) { %>
+                                <%= $item->{image}{size} || 0 %> bytes
+                            <% } %>
                        </details>
                     </a>
                 <% } %>
