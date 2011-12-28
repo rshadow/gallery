@@ -57,6 +57,7 @@ use File::Spec;
 use File::Basename;
 
 sub _raw_folder_base64;
+sub _raw_image_generic_base64;
 
 sub handler {
     my $r = shift;
@@ -72,95 +73,6 @@ sub handler {
     return show_image($r) if -f _;
     # show directory index
     return show_index($r);
-}
-
-{
-    our $template = <<'EOF';
-% my ($title, $index) = @_;
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <title><%= $title || '' =%></title>
-    <style type="text/css">
-        body {
-            font: 10pt sans-serif;
-        }
-        a {
-            text-decoration: none;
-            color: #000;
-        }
-        div.item {
-            max-width: 128px;
-            height: 128px;
-            max-height: 128px;
-            float: left;
-            text-align: center;
-            margin: 8px;
-        }
-        details.filename {
-            word-wrap: break-word;
-
-        }
-        details.extended {
-            font-size: 8pt;
-            color: #667;
-        }
-        img {
-            box-shadow: 0px 0px 3px 2px rgba(0,0,0,0.6);
-            border: none;
-        }
-    </style>
-</head>
-<body>
-    <header>
-    </header>
-    <article>
-        <% for my $item (@$index) { %>
-            <div class="item">
-                <% if( $item->{type} eq 'dir' ) { %>
-                    <a href="<%= $item->{href} %>">
-                        <img
-                            width="<%= $item->{icon}{width} %>"
-                            height="<%= $item->{icon}{height} %>"
-                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                        />
-                        <br/>
-                        <details class="filename" open="open">
-                            <%= $item->{filename} %>
-                        </details>
-                    </a>
-                <% } elsif( $item->{type} eq 'file' ) { %>
-                    <details class="filename" open="open">
-                        <%= $item->{filename} %>
-                    </details>
-                <% } elsif( $item->{type} eq 'img' ) { %>
-                    <a href="<%= $item->{href} %>">
-                        <img
-                            width="<%= $item->{icon}{width} %>"
-                            height="<%= $item->{icon}{height} %>"
-                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                        />
-                        <br/>
-                        <details class="filename" open="open">
-                            <%= $item->{filename} %>
-                        </details>
-                        <br/>
-                        <details class="extended" open="open">
-                            <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
-                            <br/>
-                            <%= $item->{image}{size} || 0 %> bytes
-                       </details>
-                    </a>
-                <% } %>
-            </div>
-        <% } %>
-    </article>
-    <footer>
-    </footer>
-</body>
-</html>
-EOF
 }
 
 =head2 show_image
@@ -248,7 +160,7 @@ sub show_index
             push @dirs, \%item;
         }
         # For images make icons and get some information
-        elsif( $filename =~ m{^.*\.(?:png|jpg|jpeg|gif|xbm|gd|gd2)$}i )
+        elsif( $filename =~ m{^.*\.(?:png|jpg|jpeg|gif|xbm|gd|gd2|ico)$}i )
         {
             # Get image
             open my $f, '<', $path;
@@ -258,44 +170,52 @@ sub show_index
 
             # Create small icon
             my $image   = GD::Image->new( $raw );
-            next unless $image;
+            my ($i_width, $i_height, $width, $height, $mime);
 
-            my $width   = $image->width;
-            my $height  = $image->height;
-            if($width <= ICON_SIZE and $height <= ICON_SIZE)
+            if( $image )
             {
-                ;
-            }
-            elsif($width > $height)
-            {
-                $height = int( ICON_SIZE * $height / $width || 1 );
-                $width  = ICON_SIZE;
-            }
-            elsif($width < $height)
-            {
-                $width  = int( ICON_SIZE * $width / $height || 1 );
-                $height = ICON_SIZE;
+                $i_width  = $width  = $image->width;
+                $i_height = $height = $image->height;
+                if($width <= ICON_SIZE and $height <= ICON_SIZE)
+                {
+                    ;
+                }
+                elsif($width > $height)
+                {
+                    $height = int( ICON_SIZE * $height / $width || 1 );
+                    $width  = ICON_SIZE;
+                }
+                elsif($width < $height)
+                {
+                    $width  = int( ICON_SIZE * $width / $height || 1 );
+                    $height = ICON_SIZE;
+                }
+                else
+                {
+                    $width  = ICON_SIZE;
+                    $height = ICON_SIZE;
+                }
+
+                my $icon    = GD::Image->new( $width, $height, 1 );
+                $icon->copyResampled($image, 0, 0, 0, 0,
+                    $width, $height,
+                    $i_width, $i_height
+                );
+
+                # Make BASE64 encoding for inline
+                $raw = MIME::Base64::encode_base64( $icon->png );
+                $mime = 'png';
             }
             else
             {
-                $width  = ICON_SIZE;
-                $height = ICON_SIZE;
+                ($raw, $width, $height, $mime) = _raw_image_generic_base64;
             }
-
-            my $icon    = GD::Image->new( $width, $height, 1 );
-            $icon->copyResampled($image, 0, 0, 0, 0,
-                $width, $height,
-                $image->width, $image->height
-            );
-
-            # Make BASE64 encoding for inline
-            $raw = MIME::Base64::encode_base64( $icon->png );
 
             # Save icon and some image information
             $item{image}{raw}     = $raw;
-            ($item{image}{type})  = $filename =~ m{^.*\.(.*?)$};
-            $item{image}{width}   = $image->width;
-            $item{image}{height}  = $image->height;
+            $item{image}{type}    = $mime;
+            $item{image}{width}   = $i_width;
+            $item{image}{height}  = $i_height;
             $item{image}{size}    = -s _;
             $item{icon}{width}    = $width;
             $item{icon}{height}   = $height;
@@ -412,6 +332,96 @@ r45SHZuWevlrdqFV5Upjs2o0fDLZ+8dfvvbH3wHu/v17McZer3fnx3eWrZ5xqPPi15+w6u9OfHiy
 98v3SLN+/z8G9z4bDOLu7juZN+WA5CWgweD+7t/c9qpUUZXnnmy3KFSr+bhQs+bjYtFdzk4F5euE
 otSptrykDz0eDvYPens/33vMbFXsr6VZ0ue9dvmixM+uHp9z6/jCZBlKlrX818IX7KTzOBay9uV/
 HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 100, 100, 'png');
+}
+
+
+{
+    our $template = <<'EOF';
+% my ($title, $index) = @_;
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title><%= $title || '' =%></title>
+    <style type="text/css">
+        body {
+            font: 10pt sans-serif;
+        }
+        a {
+            text-decoration: none;
+            color: #000;
+        }
+        div.item {
+            max-width: 128px;
+            height: 128px;
+            max-height: 128px;
+            float: left;
+            text-align: center;
+            margin: 8px;
+        }
+        details.filename {
+            word-wrap: break-word;
+
+        }
+        details.extended {
+            font-size: 8pt;
+            color: #667;
+        }
+        img {
+            box-shadow: 0px 0px 3px 2px rgba(0,0,0,0.6);
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+    </header>
+    <article>
+        <% for my $item (@$index) { %>
+            <div class="item">
+                <% if( $item->{type} eq 'dir' ) { %>
+                    <a href="<%= $item->{href} %>">
+                        <img
+                            width="<%= $item->{icon}{width} %>"
+                            height="<%= $item->{icon}{height} %>"
+                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+                        />
+                        <br/>
+                        <details class="filename" open="open">
+                            <%= $item->{filename} %>
+                        </details>
+                    </a>
+                <% } elsif( $item->{type} eq 'file' ) { %>
+                    <details class="filename" open="open">
+                        <%= $item->{filename} %>
+                    </details>
+                <% } elsif( $item->{type} eq 'img' ) { %>
+                    <a href="<%= $item->{href} %>">
+                        <img
+                            width="<%= $item->{icon}{width} %>"
+                            height="<%= $item->{icon}{height} %>"
+                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+                        />
+                        <br/>
+                        <details class="filename" open="open">
+                            <%= $item->{filename} %>
+                        </details>
+                        <br/>
+                        <details class="extended" open="open">
+                            <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
+                            <br/>
+                            <%= $item->{image}{size} || 0 %> bytes
+                       </details>
+                    </a>
+                <% } %>
+            </div>
+        <% } %>
+    </article>
+    <footer>
+    </footer>
+</body>
+</html>
+EOF
 }
 
 1;
