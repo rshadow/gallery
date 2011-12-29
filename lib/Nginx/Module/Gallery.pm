@@ -418,7 +418,7 @@ HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 100, 100, 'png');
             font-size: 8pt;
             color: #667;
         }
-        img {
+        img.image {
             box-shadow: 0px 0px 3px 2px rgba(0,0,0,0.6);
             border: none;
         }
@@ -449,6 +449,7 @@ HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 100, 100, 'png');
                 <% } elsif( $item->{type} eq 'img' ) { %>
                     <a href="<%= $item->{href} %>">
                         <img
+                            class="image"
                             width="<%= $item->{icon}{width} %>"
                             height="<%= $item->{icon}{height} %>"
                             src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
