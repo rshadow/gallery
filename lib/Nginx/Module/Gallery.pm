@@ -46,14 +46,20 @@ Example of nginx server section:
 
 our $VERSION=0.01;
 
+#Max icon size
 use constant ICON_SIZE  => 100;
+# Path to cache and mode
+use constant CACHE_PATH => '/var/cache/gallery';
+use constant CACHE_MODE => 0755;
 
 use nginx;
 
 use Mojo::Template;
-use MIME::Base64;
+use MIME::Base64 qw(encode_base64);
 use File::Spec;
 use File::Basename;
+use File::Path qw(make_path);
+use Digest::MD5 'md5_hex';
 
 use GD;
 # Enable truecolor
@@ -116,7 +122,7 @@ sub show_index
         my $updir = File::Spec->catdir( @updir );
         undef @updir;
 
-        my ($raw, $width, $height, $mime) = _raw_updir_base64;
+        my ($raw, $mime) = _raw_updir_base64;
 
         # Push upper directory link for non root directory
         push @dirs, {
@@ -128,13 +134,9 @@ sub show_index
                 raw     => $raw,
                 type    => $mime,
             },
-            icon        => {
-                width   => $width,
-                height  => $height,
-            }
         };
     }
-
+$r->send_http_header("text/html");
     # Create index
     for my $path ( @index )
     {
@@ -151,13 +153,11 @@ sub show_index
         # For folders get standart icon
         if( -d $path )
         {
-            my ($raw, $width, $height, $mime) = _raw_folder_base64;
+            my ($raw, $mime) = _raw_folder_base64;
 
             # Save icon and some image information
             $item{image}{raw}     = $raw;
             $item{image}{type}    = $mime;
-            $item{icon}{width}    = $width;
-            $item{icon}{height}   = $height;
 
             $item{type} = 'dir';
 
@@ -166,67 +166,30 @@ sub show_index
         # For images make icons and get some information
         elsif( $filename =~ m{^.*\.(?:png|jpg|jpeg|gif|xbm|gd|gd2|ico)$}i )
         {
-            # Get image
-            open my $f, '<:raw', $path;
-            local $/;
-            my $raw = <$f>;
-            close $f;
+            # Load icon from cache
+            my ($raw, $mime, $image_width, $image_height) =
+                get_icon_form_cache( $path , $r);
 
-            # Create small icon
-            my $image   = GD::Image->new( $raw );
-            my ($i_width, $i_height, $width, $height, $mime);
-
-            if( $image )
+            # Try to make icon
+            unless( $raw )
             {
-                $i_width  = $width  = $image->width;
-                $i_height = $height = $image->height;
-                if($width <= ICON_SIZE and $height <= ICON_SIZE)
-                {
-                    ;
-                }
-                elsif($width > $height)
-                {
-                    $height = int( ICON_SIZE * $height / $width || 1 );
-                    $width  = ICON_SIZE;
-                }
-                elsif($width < $height)
-                {
-                    $width  = int( ICON_SIZE * $width / $height || 1 );
-                    $height = ICON_SIZE;
-                }
-                else
-                {
-                    $width  = ICON_SIZE;
-                    $height = ICON_SIZE;
-                }
-
-                # Create icon image
-                my $icon = GD::Image->new( $width, $height, 1 );
-                # Fill white
-                $icon->fill(0, 0, $icon->colorAllocate(255,255,255) );
-                # Copy and resize from original image
-                $icon->copyResampled($image, 0, 0, 0, 0,
-                    $width, $height,
-                    $i_width, $i_height
-                );
-
-                # Make BASE64 encoding for inline
-                $raw = MIME::Base64::encode_base64( $icon->png );
-                $mime = 'png';
+                ($raw, $mime, $image_width, $image_height) = make_icon( $path );
+                # Try to save in cache
+                save_icon_in_cache(
+                    $path, $raw, $mime, $image_width, $image_height)
+                        if $raw;
             }
-            else
-            {
-                ($raw, $width, $height, $mime) = _raw_image_generic_base64;
-            }
+            # Make generic image icon
+            ($raw, $mime, $image_width, $image_height) =
+                _raw_image_generic_base64
+                    unless $raw;
 
             # Save icon and some image information
             $item{image}{raw}     = $raw;
             $item{image}{type}    = $mime;
-            $item{image}{width}   = $i_width;
-            $item{image}{height}  = $i_height;
+            $item{image}{width}   = $image_width;
+            $item{image}{height}  = $image_height;
             $item{image}{size}    = -s _;
-            $item{icon}{width}    = $width;
-            $item{icon}{height}   = $height;
 
             $item{type} = 'img';
 
@@ -254,6 +217,117 @@ sub show_index
     # Send index for client
     $r->print( $output );
     return OK;
+}
+
+sub get_icon_form_cache
+{
+    my ($path, $r) = @_;
+
+    my ($filename, $dir) = File::Basename::fileparse($path);
+
+    # Find icon
+    my $md5 = md5_hex join( ',', $path, stat $path );
+    my $cache_mask = File::Spec->catfile(
+        CACHE_PATH, $dir, sprintf( '%s.*.base64', $md5) );
+    my ($cache_path) = glob $cache_mask;
+$r->print( $cache_mask, "    :     ", $cache_path,  "\n<br/>" );
+    # Icon not found
+    return () unless $cache_path;
+
+    # Get icon
+    open my $f, '<:raw', $path;
+    local $/;
+    my $raw = <$f>;
+    close $f;
+
+
+
+    my ($image_width, $image_height, $mime) =
+        $cache_path =~ m{^\w+\.(\d+)x(\d+)\.(\w+)\.base64$}i;
+
+    return ($raw, $mime, $image_width, $image_height);
+}
+
+sub save_icon_in_cache
+{
+    my ($path, $raw, $mime, $image_width, $image_height) = @_;
+
+    my ($filename, $dir) = File::Basename::fileparse($path);
+
+    # Create dirs
+    make_path( File::Spec->catdir(CACHE_PATH, $dir), {mode => CACHE_MODE} );
+    return if $!;
+
+    # Make path
+    my $md5 = md5_hex join( ',', $path, stat _ );
+    my $cache = File::Spec->catfile(
+        CACHE_PATH,
+        $dir,
+        sprintf( '%s.%dx%d.%s.base64',
+            $md5, $image_width, $image_height, $mime )
+    );
+
+    # Store icon on disk
+    open my $f, '>:raw', $cache or return;
+    print $f $raw;
+    close $f;
+
+    return 1;
+}
+
+sub make_icon
+{
+    my ($path) = @_;
+
+    # Get image
+    open my $f, '<:raw', $path or return ();
+    local $/;
+    my $raw = <$f>;
+    close $f;
+
+    # Create small icon
+    my $image   = GD::Image->new( $raw );
+    return () unless $image;
+
+    my ($image_width, $image_height, $width, $height, $mime);
+
+    $image_width  = $width  = $image->width;
+    $image_height = $height = $image->height;
+    if($width <= ICON_SIZE and $height <= ICON_SIZE)
+    {
+        ;
+    }
+    elsif($width > $height)
+    {
+        $height = int( ICON_SIZE * $height / $width || 1 );
+        $width  = ICON_SIZE;
+    }
+    elsif($width < $height)
+    {
+        $width  = int( ICON_SIZE * $width / $height || 1 );
+        $height = ICON_SIZE;
+    }
+    else
+    {
+        $width  = ICON_SIZE;
+        $height = ICON_SIZE;
+    }
+
+    # Create icon image
+    my $icon = GD::Image->new( $width, $height, 1 );
+    # Fill white
+    $icon->fill(0, 0, $icon->colorAllocate(255,255,255) );
+    # Copy and resize from original image
+    $icon->copyResampled($image, 0, 0, 0, 0,
+        $width, $height,
+        $image_width, $image_height
+    );
+
+    # Make BASE64 encoding for inline
+    $raw = MIME::Base64::encode_base64( $icon->png );
+    $mime = 'png';
+
+    return ($raw, $mime, $image_width, $image_height);
 }
 
 =head2 _raw_folder_base64
@@ -286,7 +360,7 @@ H7B+oNAjqa4vfadA1HN4fTbAAnOlV0qsa3salKWMBm7XU1uaqK4pGPX+hnZC+VV1nA2obq10IMn7
 85iDi2HvKKOZJKz6xa/LG1ZLedsb98swJKxV0qFQecEEp36pczN+p5+R9DDxNyq6M1g7XJnjUtaL
 soNgJY71HgOLfQFU7kBcSg7dQHcZs9vF72XIbz+U3z/q2z94jsG8zW8/OJYL/yVfkk6KEfX6XF/1
 P4HwHxva2NCPjov+rwWDTDWnZof/I4wEJvrMTXfixfr/Op7GQmmFfgbQ840X97PwiwP0LzfOZoqf
-fLs9AAAAAElFTkSuQmCC', 100, 100, 'png');
+fLs9AAAAAElFTkSuQmCC', 'png', 100, 100);
 }
 
 =head2 _raw_updir_base64
@@ -329,7 +403,7 @@ MGyxvvyZ86cO6s2PtW9+FQrfSgOAtabLWlPYIjo9OpJhAUj2mVQEU8+0+3w4ZL5v+97kmQWACk+y
 M6yZMgzwpQzYdLooS6OUxFiIA8S0+PVwyB2c8QamP/dMhpo3/LKh9SmeFxBCLMsCQNK0gLcsb5Aa
 i0a80Yg3PidFI155TpKjUkL2KTGfqswwDGcwrTSWtYgr1lVUPWAwWrnsLD4oGYwxQgghRAjJPAIA
 IYTNCMdxyWNasySgTBbJSLoq+QWlQWnK0oJu9WV+1Onmm9CXC1R47rh/Ye840P8AyFco0aVq76IA
-AAAASUVORK5CYII=', 100, 100, 'png');
+AAAASUVORK5CYII=', 'png', 100, 100);
 }
 
 
@@ -382,7 +456,7 @@ eNSsAdrYkpkz6x30ul9/wadH8fBB7+BfBjHefud2uUTyzKFyy66/+q2dP9r0yUiNskZRY9NHU+xJ
 r45SHZuWevlrdqFV5Upjs2o0fDLZ+8dfvvbH3wHu/v17McZer3fnx3eWrZ5xqPPi15+w6u9OfHiy
 98v3SLN+/z8G9z4bDOLu7juZN+WA5CWgweD+7t/c9qpUUZXnnmy3KFSr+bhQs+bjYtFdzk4F5euE
 otSptrykDz0eDvYPens/33vMbFXsr6VZ0ue9dvmixM+uHp9z6/jCZBlKlrX818IX7KTzOBay9uV/
-HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 100, 100, 'png');
+HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 'png', 100, 100);
 }
 
 
@@ -433,8 +507,6 @@ HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 100, 100, 'png');
                 <% if( $item->{type} eq 'dir' ) { %>
                     <a href="<%= $item->{href} %>">
                         <img
-                            width="<%= $item->{icon}{width} %>"
-                            height="<%= $item->{icon}{height} %>"
                             src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
                         />
                         <br/>
@@ -450,8 +522,6 @@ HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 100, 100, 'png');
                     <a href="<%= $item->{href} %>">
                         <img
                             class="image"
-                            width="<%= $item->{icon}{width} %>"
-                            height="<%= $item->{icon}{height} %>"
                             src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
                         />
                         <br/>
