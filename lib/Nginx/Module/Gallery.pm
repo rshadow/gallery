@@ -69,7 +69,8 @@ sub _raw_folder_base64;
 sub _raw_updir_base64;
 sub _raw_image_generic_base64;
 
-sub handler {
+sub handler($)
+{
     my $r = shift;
 
     # Stop unless GET
@@ -91,7 +92,7 @@ Send image to client
 
 =cut
 
-sub show_image
+sub show_image($)
 {
     my $r = shift;
     $r->sendfile( $r->filename );
@@ -104,7 +105,7 @@ Send directory index to client
 
 =cut
 
-sub show_index
+sub show_index($)
 {
     my $r = shift;
 
@@ -219,18 +220,29 @@ $r->send_http_header("text/html");
     return OK;
 }
 
-sub get_icon_form_cache
+=head2 _get_md5_image
+
+Return unque MD5 hex string for image file
+
+=cut
+
+sub _get_md5_image($)
 {
-    my ($path, $r) = @_;
+    my ($path) = @_;
+    return md5_hex join( ',', $path, -C $path, -s _ );
+}
+
+sub get_icon_form_cache($)
+{
+    my ($path) = @_;
 
     my ($filename, $dir) = File::Basename::fileparse($path);
 
     # Find icon
-    my $md5 = md5_hex join( ',', $path, stat $path );
     my $cache_mask = File::Spec->catfile(
-        CACHE_PATH, $dir, sprintf( '%s.*.base64', $md5) );
+        CACHE_PATH, $dir, sprintf( '%s.*.base64', _get_md5_image( $path ) ) );
     my ($cache_path) = glob $cache_mask;
-$r->print( $cache_mask, "    :     ", $cache_path,  "\n<br/>" );
+
     # Icon not found
     return () unless $cache_path;
 
@@ -240,15 +252,13 @@ $r->print( $cache_mask, "    :     ", $cache_path,  "\n<br/>" );
     my $raw = <$f>;
     close $f;
 
-
-
     my ($image_width, $image_height, $mime) =
         $cache_path =~ m{^\w+\.(\d+)x(\d+)\.(\w+)\.base64$}i;
 
     return ($raw, $mime, $image_width, $image_height);
 }
 
-sub save_icon_in_cache
+sub save_icon_in_cache($$$$$)
 {
     my ($path, $raw, $mime, $image_width, $image_height) = @_;
 
@@ -259,12 +269,11 @@ sub save_icon_in_cache
     return if $!;
 
     # Make path
-    my $md5 = md5_hex join( ',', $path, stat _ );
     my $cache = File::Spec->catfile(
         CACHE_PATH,
         $dir,
         sprintf( '%s.%dx%d.%s.base64',
-            $md5, $image_width, $image_height, $mime )
+            _get_md5_image( $path ), $image_width, $image_height, $mime )
     );
 
     # Store icon on disk
@@ -275,7 +284,7 @@ sub save_icon_in_cache
     return 1;
 }
 
-sub make_icon
+sub make_icon($)
 {
     my ($path) = @_;
 
@@ -336,7 +345,7 @@ Return PNG image of folder encoded in base64
 
 =cut
 
-sub _raw_folder_base64
+sub _raw_folder_base64()
 {
     return ('
 iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAEg0lEQVRYhe1ZK3ZcRxC90mlwwYAG
@@ -369,7 +378,7 @@ Return PNG image for updir encoded in base64
 
 =cut
 
-sub _raw_updir_base64
+sub _raw_updir_base64()
 {
     return ('
 iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAGuUlEQVRYhe3YfWwT5x0H8N+d7y52
@@ -413,7 +422,7 @@ Return PNG image for non recognized images encoded in base64
 
 =cut
 
-sub _raw_image_generic_base64
+sub _raw_image_generic_base64()
 {
     return ('
 iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAIzElEQVRYhe2ZMYyjx3XHf7t8JP+7
