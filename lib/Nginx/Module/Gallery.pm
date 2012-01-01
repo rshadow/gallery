@@ -1,8 +1,9 @@
+package Nginx::Module::Gallery;
+
 use strict;
 use warnings;
 use utf8;
-
-package Nginx::Module::Gallery;
+use 5.0;
 
 =head1 NAME
 
@@ -65,9 +66,9 @@ use GD;
 # Enable truecolor
 GD::Image->trueColor(1);
 
-sub _raw_folder_base64;
-sub _raw_updir_base64;
-sub _raw_image_generic_base64;
+sub _raw_folder_base64();
+sub _raw_updir_base64();
+sub _raw_image_generic_base64();
 
 sub handler($)
 {
@@ -229,7 +230,8 @@ Return unque MD5 hex string for image file
 sub _get_md5_image($)
 {
     my ($path) = @_;
-    return md5_hex join( ',', $path, -C $path, -s _ );
+    my ($size, $mtime) = ( stat($path) )[7,9];
+    return md5_hex join( ',', $path, $size, $mtime );
 }
 
 sub get_icon_form_cache($)
