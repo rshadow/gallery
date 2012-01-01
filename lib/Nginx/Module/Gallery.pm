@@ -110,15 +110,18 @@ sub show_index($)
 {
     my $r = shift;
 
-    # Get directory index
-    my @index = glob File::Spec->catfile($r->filename, '*');
+    # Templates
+    our %template;
+    my $mt = Mojo::Template->new;
 
-    # Create two list of dirs and files hash
-    my (@dirs, @files);
+    # Send top of index page
+    $r->send_http_header("text/html");
+    $r->print( $mt->render( _template('top'), 'Gallery: '.$r->uri) );
 
     # Add updir for non root directory
     unless( $r->uri eq '/' )
     {
+        # make link on updir
         my @updir = File::Spec->splitdir( $r->uri );
         pop @updir;
         my $updir = File::Spec->catdir( @updir );
@@ -126,8 +129,8 @@ sub show_index($)
 
         my ($raw, $mime) = _raw_updir_base64;
 
-        # Push upper directory link for non root directory
-        push @dirs, {
+        # Send updir icon
+        my %item = (
             path        => File::Spec->updir,
             filename    => File::Spec->updir,
             type        => 'dir',
@@ -136,9 +139,14 @@ sub show_index($)
                 raw     => $raw,
                 type    => $mime,
             },
-        };
+        );
+
+        $r->print( $mt->render( _template('item'), \%item ) );
     }
-$r->send_http_header("text/html");
+
+    # Get directory index
+    my @index = sort glob File::Spec->catfile($r->filename, '*');
+
     # Create index
     for my $path ( @index )
     {
@@ -162,15 +170,13 @@ $r->send_http_header("text/html");
             $item{image}{type}    = $mime;
 
             $item{type} = 'dir';
-
-            push @dirs, \%item;
         }
         # For images make icons and get some information
         elsif( $filename =~ m{^.*\.(?:png|jpg|jpeg|gif|xbm|gd|gd2|ico)$}i )
         {
             # Load icon from cache
             my ($raw, $mime, $image_width, $image_height) =
-                get_icon_form_cache( $path , $r);
+                get_icon_form_cache( $path );
 
             # Try to make icon
             unless( $raw )
@@ -194,30 +200,14 @@ $r->send_http_header("text/html");
             $item{image}{size}    = -s _;
 
             $item{type} = 'img';
-
-            push @files, \%item;
         }
+
+        $r->print( $mt->render( _template('item'), \%item ) );
     }
 
-    # Make sorted index
-    @index = (
-        sort({ uc($a->{filename}) cmp uc($b->{filename}) } @dirs  ),
-        sort({ uc($a->{filename}) cmp uc($b->{filename}) } @files ),
-    );
+    # Send bottom of index page
+    $r->print( $mt->render( _template('bottom') ) );
 
-    # Render template for directory index
-    my $mt = Mojo::Template->new;
-
-    our $template;
-    my $output = $mt->render(
-        $template,
-        'Gallery: '.$r->uri,
-        \@index,
-    );
-
-    $r->send_http_header("text/html");
-    # Send index for client
-    $r->print( $output );
     return OK;
 }
 
@@ -477,10 +467,18 @@ otSptrykDz0eDvYPens/33vMbFXsr6VZ0ue9dvmixM+uHp9z6/jCZBlKlrX818IX7KTzOBay9uV/
 HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 'png', 100, 100);
 }
 
-
+sub _template($)
 {
-    our $template = <<'EOF';
-% my ($title, $index) = @_;
+    my ($part) = @_;
+
+    our %template;
+
+    if( $part eq 'top' )
+    {
+        return $template{top} if $template{top};
+
+        $template{top} = <<'EOF';
+% my ($title) = @_;
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -520,52 +518,73 @@ HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 'png', 100, 100);
     <header>
     </header>
     <article>
-        <% for my $item (@$index) { %>
-            <div class="item">
-                <% if( $item->{type} eq 'dir' ) { %>
-                    <a href="<%= $item->{href} %>">
-                        <img
-                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                        />
-                        <br/>
-                        <details class="filename" open="open">
-                            <%= $item->{filename} %>
-                        </details>
-                    </a>
-                <% } elsif( $item->{type} eq 'file' ) { %>
+EOF
+        return $template{top};
+    }
+    if( $part eq 'item' )
+    {
+        return $template{item} if $template{item};
+
+        $template{item} = <<'EOF';
+        % my ($item) = @_;
+        <div class="item">
+            <% if( $item->{type} eq 'dir' ) { %>
+                <a href="<%= $item->{href} %>">
+                    <img
+                        src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+                    />
+                    <br/>
                     <details class="filename" open="open">
                         <%= $item->{filename} %>
                     </details>
-                <% } elsif( $item->{type} eq 'img' ) { %>
-                    <a href="<%= $item->{href} %>">
-                        <img
-                            class="image"
-                            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                        />
-                        <br/>
-                        <details class="filename" open="open">
-                            <%= $item->{filename} %>
-                        </details>
-                        <br/>
-                        <details class="extended" open="open">
-                            <% if(defined $item->{image}{width} and defined $item->{image}{height} ) { %>
-                                <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
-                                <br/>
-                            <% } %>
-                            <% if( defined $item->{image}{size} ) { %>
-                                <%= $item->{image}{size} || 0 %> bytes
-                            <% } %>
-                       </details>
-                    </a>
-                <% } %>
-            </div>
-        <% } %>
+                </a>
+            <% } elsif( $item->{type} eq 'file' ) { %>
+                <details class="filename" open="open">
+                    <%= $item->{filename} %>
+                </details>
+            <% } elsif( $item->{type} eq 'img' ) { %>
+                <a href="<%= $item->{href} %>">
+                    <img
+                        class="image"
+                        src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+                    />
+                    <br/>
+                    <details class="filename" open="open">
+                        <%= $item->{filename} %>
+                    </details>
+                    <br/>
+                    <details class="extended" open="open">
+                        <% if(defined $item->{image}{width} and defined $item->{image}{height} ) { %>
+                            <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
+                            <br/>
+                        <% } %>
+                        <% if( defined $item->{image}{size} ) { %>
+                            <%= $item->{image}{size} || 0 %> bytes
+                        <% } %>
+                   </details>
+                </a>
+            <% } %>
+        </div>
+EOF
+        return $template{item};
+    }
+    elsif( $part eq 'bottom' )
+    {
+        return $template{bottom} if $template{bottom};
+
+        $template{bottom} = <<'EOF';
     </article>
     <footer>
     </footer>
 </body>
 </html>
 EOF
+        return $template{bottom};
+    }
+    else
+    {
+        return;
+    }
 }
 
 1;
