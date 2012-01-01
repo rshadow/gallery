@@ -249,13 +249,13 @@ sub get_icon_form_cache($)
     return () unless $cache_path;
 
     # Get icon
-    open my $f, '<:raw', $path;
+    open my $f, '<:raw', $cache_path or return ();
     local $/;
     my $raw = <$f>;
     close $f;
 
     my ($image_width, $image_height, $mime) =
-        $cache_path =~ m{^\w+\.(\d+)x(\d+)\.(\w+)\.base64$}i;
+        $cache_path =~ m{^.*\.(\d+)x(\d+)\.(\w+)\.base64$}i;
 
     return ($raw, $mime, $image_width, $image_height);
 }
@@ -267,8 +267,15 @@ sub save_icon_in_cache($$$$$)
     my ($filename, $dir) = File::Basename::fileparse($path);
 
     # Create dirs
-    make_path( File::Spec->catdir(CACHE_PATH, $dir), {mode => CACHE_MODE} );
-    return if $!;
+    my $error;
+    make_path(
+        File::Spec->catdir(CACHE_PATH, $dir),
+        {
+            mode    => CACHE_MODE,
+            error   => \$error,
+        }
+    );
+    return if $! or @$error;
 
     # Make path
     my $cache = File::Spec->catfile(
@@ -283,7 +290,7 @@ sub save_icon_in_cache($$$$$)
     print $f $raw;
     close $f;
 
-    return 1;
+    return $cache;
 }
 
 sub make_icon($)
