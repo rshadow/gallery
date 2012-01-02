@@ -103,6 +103,7 @@ Send image to client
 sub show_image($)
 {
     my $r = shift;
+    $r->send_http_header;
     $r->sendfile( $r->filename );
     return OK;
 }
