@@ -74,9 +74,6 @@ sub _raw_image_generic_base64();
 sub _raw_audio_generic_base64();
 sub _raw_video_generic_base64();
 
-sub init {}
-sub exit {}
-
 sub handler($)
 {
     my $r = shift;
