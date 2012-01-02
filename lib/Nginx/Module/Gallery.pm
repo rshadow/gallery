@@ -47,13 +47,13 @@ Example of nginx server section:
 
 our $VERSION=0.01;
 
-#Max icon size
-use constant ICON_SIZE  => 100;
+# Max icon size
+our $ICON_SIZE  => 100;
 # Path to cache and mode
-use constant CACHE_PATH => '/var/cache/gallery';
-use constant CACHE_MODE => 0755;
-
-our $TEMPLATE_PATH = '/home/rubin/workspace/gallery/templates';
+our $CACHE_PATH     = '/var/cache/gallery';
+our $CACHE_MODE     = 0755;
+# Template path
+our $TEMPLATE_PATH  = '/home/rubin/workspace/gallery/templates';
 
 use nginx;
 
@@ -278,7 +278,7 @@ sub get_icon_form_cache($)
 
     # Find icon
     my $cache_mask = File::Spec->catfile(
-        CACHE_PATH, $dir, sprintf( '%s.*.base64', _get_md5_image( $path ) ) );
+        $CACHE_PATH, $dir, sprintf( '%s.*.base64', _get_md5_image( $path ) ) );
     my ($cache_path) = glob $cache_mask;
 
     # Icon not found
@@ -305,9 +305,9 @@ sub save_icon_in_cache($$$$$)
     # Create dirs
     my $error;
     make_path(
-        File::Spec->catdir(CACHE_PATH, $dir),
+        File::Spec->catdir($CACHE_PATH, $dir),
         {
-            mode    => CACHE_MODE,
+            mode    => $CACHE_MODE,
             error   => \$error,
         }
     );
@@ -315,7 +315,7 @@ sub save_icon_in_cache($$$$$)
 
     # Make path
     my $cache = File::Spec->catfile(
-        CACHE_PATH,
+        $CACHE_PATH,
         $dir,
         sprintf( '%s.%dx%d.%s.base64',
             _get_md5_image( $path ), $image_width, $image_height, $mime )
@@ -347,24 +347,24 @@ sub make_icon($)
 
     $image_width  = $width  = $image->width;
     $image_height = $height = $image->height;
-    if($width <= ICON_SIZE and $height <= ICON_SIZE)
+    if($width <= $ICON_SIZE and $height <= $ICON_SIZE)
     {
         ;
     }
     elsif($width > $height)
     {
-        $height = int( ICON_SIZE * $height / $width || 1 );
-        $width  = ICON_SIZE;
+        $height = int( $ICON_SIZE * $height / $width || 1 );
+        $width  = $ICON_SIZE;
     }
     elsif($width < $height)
     {
-        $width  = int( ICON_SIZE * $width / $height || 1 );
-        $height = ICON_SIZE;
+        $width  = int( $ICON_SIZE * $width / $height || 1 );
+        $height = $ICON_SIZE;
     }
     else
     {
-        $width  = ICON_SIZE;
-        $height = ICON_SIZE;
+        $width  = $ICON_SIZE;
+        $height = $ICON_SIZE;
     }
 
     # Create icon image
@@ -414,7 +414,7 @@ H7B+oNAjqa4vfadA1HN4fTbAAnOlV0qsa3salKWMBm7XU1uaqK4pGPX+hnZC+VV1nA2obq10IMn7
 85iDi2HvKKOZJKz6xa/LG1ZLedsb98swJKxV0qFQecEEp36pczN+p5+R9DDxNyq6M1g7XJnjUtaL
 soNgJY71HgOLfQFU7kBcSg7dQHcZs9vF72XIbz+U3z/q2z94jsG8zW8/OJYL/yVfkk6KEfX6XF/1
 P4HwHxva2NCPjov+rwWDTDWnZof/I4wEJvrMTXfixfr/Op7GQmmFfgbQ840X97PwiwP0LzfOZoqf
-fLs9AAAAAElFTkSuQmCC', 'png', ICON_SIZE, ICON_SIZE);
+fLs9AAAAAElFTkSuQmCC', 'png', $ICON_SIZE, $ICON_SIZE);
 }
 
 =head2 _raw_updir_base64
@@ -457,7 +457,7 @@ MGyxvvyZ86cO6s2PtW9+FQrfSgOAtabLWlPYIjo9OpJhAUj2mVQEU8+0+3w4ZL5v+97kmQWACk+y
 M6yZMgzwpQzYdLooS6OUxFiIA8S0+PVwyB2c8QamP/dMhpo3/LKh9SmeFxBCLMsCQNK0gLcsb5Aa
 i0a80Yg3PidFI155TpKjUkL2KTGfqswwDGcwrTSWtYgr1lVUPWAwWrnsLD4oGYwxQgghRAjJPAIA
 IYTNCMdxyWNasySgTBbJSLoq+QWlQWnK0oJu9WV+1Onmm9CXC1R47rh/Ye840P8AyFco0aVq76IA
-AAAASUVORK5CYII=', 'png', ICON_SIZE, ICON_SIZE);
+AAAASUVORK5CYII=', 'png', $ICON_SIZE, $ICON_SIZE);
 }
 
 
@@ -510,7 +510,7 @@ eNSsAdrYkpkz6x30ul9/wadH8fBB7+BfBjHefud2uUTyzKFyy66/+q2dP9r0yUiNskZRY9NHU+xJ
 r45SHZuWevlrdqFV5Upjs2o0fDLZ+8dfvvbH3wHu/v17McZer3fnx3eWrZ5xqPPi15+w6u9OfHiy
 98v3SLN+/z8G9z4bDOLu7juZN+WA5CWgweD+7t/c9qpUUZXnnmy3KFSr+bhQs+bjYtFdzk4F5euE
 otSptrykDz0eDvYPens/33vMbFXsr6VZ0ue9dvmixM+uHp9z6/jCZBlKlrX818IX7KTzOBay9uV/
-HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 'png', ICON_SIZE, ICON_SIZE);
+HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 'png', $ICON_SIZE, $ICON_SIZE);
 }
 
 sub _raw_audio_generic_base64()
@@ -551,7 +551,7 @@ hiLqvr7UzOThkcGP1GrVerNIgybBsd5YOplMJRKJ/v7+ZDLZuqaQACEUXtvyFI1Gz0OacHp0u4Uy
 IhFNPB4PHeLxeDqd9jzP8zwhRMRqWVY8Ho/H4+HKoijRZBFHq4VJurWJbpasjSwSNQy/rkJdCyGE
 EIwxxlh431r7SIDR4sDttlJJrQJqrVpUu+imHSja/G2xVgYK78EdrNWltWptP1tZqWgI3un7s7Xj
 tfms0lojtK3tf4S9I9CHZffcXwv3HNB/AVrokQzrS3LNAAAAAElFTkSuQmCC',
-    'png', ICON_SIZE, ICON_SIZE);
+    'png', $ICON_SIZE, $ICON_SIZE);
 }
 
 sub _raw_video_generic_base64()
@@ -628,7 +628,7 @@ E3p+cAgAIMmyIkmKokqSqGiqJquKKpcFNEUN+nVdURRVVWVJUlVVlmVVVWRJVtXZTllVFUVRrpr1
 M3QJiBf4fNGElrf5mzddu379ytYVkiR92XD/d10AGhgYTKRy3//e9370w3tFUfzqOT4J1D80+u+/
 fXpJc/NfEOWCGGOr1l978lQn+3oIMMaOHO34S2Nc0pfYU381Qp//yFerrx3Q/wCfvJn5YhBj+QAA
 AABJRU5ErkJggg==',
-    'png', ICON_SIZE, ICON_SIZE);
+    'png', $ICON_SIZE, $ICON_SIZE);
 }
 
 sub _template($$)
