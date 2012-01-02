@@ -3,7 +3,7 @@ package Nginx::Module::Gallery;
 use strict;
 use warnings;
 use utf8;
-use 5.0;
+use 5.10.1;
 
 =head1 NAME
 
@@ -145,7 +145,9 @@ sub show_index($)
     }
 
     # Get directory index
-    my @index = sort glob File::Spec->catfile($r->filename, '*');
+    my $mask = File::Spec->catfile($r->filename, '*');
+    $mask =~ s{(\s)}{\\$1}g;
+    my @index = sort glob $mask;
 
     # Create index
     for my $path ( @index )
