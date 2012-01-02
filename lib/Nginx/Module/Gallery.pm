@@ -57,10 +57,12 @@ use nginx;
 
 use Mojo::Template;
 use MIME::Base64 qw(encode_base64);
+#use MIME::Types;
 use File::Spec;
 use File::Basename;
 use File::Path qw(make_path);
 use Digest::MD5 'md5_hex';
+use List::MoreUtils qw(any);
 
 use GD;
 # Enable truecolor
@@ -69,6 +71,11 @@ GD::Image->trueColor(1);
 sub _raw_folder_base64();
 sub _raw_updir_base64();
 sub _raw_image_generic_base64();
+sub _raw_audio_generic_base64();
+sub _raw_video_generic_base64();
+
+sub init {}
+sub exit {}
 
 sub handler($)
 {
@@ -113,6 +120,12 @@ sub show_index($)
     # Templates
     our %template;
     my $mt = Mojo::Template->new;
+    # Mime type
+#    my $mimetypes = MIME::Types->new;
+#    my $unknown   = MIME::Type->new(
+#        encoding    => 'base64',
+#        simplified  => 'unknown/unknown',
+#        type        => 'x-unknown/x-unknown');
 
     # Send top of index page
     $r->send_http_header("text/html");
@@ -200,8 +213,39 @@ sub show_index($)
             $item{image}{width}   = $image_width;
             $item{image}{height}  = $image_height;
             $item{image}{size}    = -s _;
+#            $item{image}{mime}    = $mimetypes->mimeTypeOf( $path ) || $unknown;
 
-            $item{type} = 'img';
+            $item{type} = 'image';
+        }
+        elsif( $filename =~ m{^.*\.(?:mp3|wav|ogg|oga)$}i )
+        {
+            # Load icon from cache
+            my ($raw, $mime, $image_width, $image_height) =
+                _raw_audio_generic_base64;
+
+            # Save icon and some image information
+            $item{image}{raw}     = $raw;
+            $item{image}{type}    = $mime;
+            $item{image}{width}   = $image_width;
+            $item{image}{height}  = $image_height;
+            $item{image}{size}    = -s _;
+
+            $item{type} = 'audio';
+        }
+        elsif( $filename =~ m{^.*\.(?:avi|mov)$}i )
+        {
+            # Load icon from cache
+            my ($raw, $mime, $image_width, $image_height) =
+                _raw_video_generic_base64;
+
+            # Save icon and some image information
+            $item{image}{raw}     = $raw;
+            $item{image}{type}    = $mime;
+            $item{image}{width}   = $image_width;
+            $item{image}{height}  = $image_height;
+            $item{image}{size}    = -s _;
+
+            $item{type} = 'video';
         }
 
         $r->print( $mt->render( _template('item'), \%item ) );
@@ -370,7 +414,7 @@ H7B+oNAjqa4vfadA1HN4fTbAAnOlV0qsa3salKWMBm7XU1uaqK4pGPX+hnZC+VV1nA2obq10IMn7
 85iDi2HvKKOZJKz6xa/LG1ZLedsb98swJKxV0qFQecEEp36pczN+p5+R9DDxNyq6M1g7XJnjUtaL
 soNgJY71HgOLfQFU7kBcSg7dQHcZs9vF72XIbz+U3z/q2z94jsG8zW8/OJYL/yVfkk6KEfX6XF/1
 P4HwHxva2NCPjov+rwWDTDWnZof/I4wEJvrMTXfixfr/Op7GQmmFfgbQ840X97PwiwP0LzfOZoqf
-fLs9AAAAAElFTkSuQmCC', 'png', 100, 100);
+fLs9AAAAAElFTkSuQmCC', 'png', ICON_SIZE, ICON_SIZE);
 }
 
 =head2 _raw_updir_base64
@@ -413,7 +457,7 @@ MGyxvvyZ86cO6s2PtW9+FQrfSgOAtabLWlPYIjo9OpJhAUj2mVQEU8+0+3w4ZL5v+97kmQWACk+y
 M6yZMgzwpQzYdLooS6OUxFiIA8S0+PVwyB2c8QamP/dMhpo3/LKh9SmeFxBCLMsCQNK0gLcsb5Aa
 i0a80Yg3PidFI155TpKjUkL2KTGfqswwDGcwrTSWtYgr1lVUPWAwWrnsLD4oGYwxQgghRAjJPAIA
 IYTNCMdxyWNasySgTBbJSLoq+QWlQWnK0oJu9WV+1Onmm9CXC1R47rh/Ye840P8AyFco0aVq76IA
-AAAASUVORK5CYII=', 'png', 100, 100);
+AAAASUVORK5CYII=', 'png', ICON_SIZE, ICON_SIZE);
 }
 
 
@@ -466,7 +510,125 @@ eNSsAdrYkpkz6x30ul9/wadH8fBB7+BfBjHefud2uUTyzKFyy66/+q2dP9r0yUiNskZRY9NHU+xJ
 r45SHZuWevlrdqFV5Upjs2o0fDLZ+8dfvvbH3wHu/v17McZer3fnx3eWrZ5xqPPi15+w6u9OfHiy
 98v3SLN+/z8G9z4bDOLu7juZN+WA5CWgweD+7t/c9qpUUZXnnmy3KFSr+bhQs+bjYtFdzk4F5euE
 otSptrykDz0eDvYPens/33vMbFXsr6VZ0ue9dvmixM+uHp9z6/jCZBlKlrX818IX7KTzOBay9uV/
-HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 'png', 100, 100);
+HU+RLwE9Tf4HR7mPgteJdpMAAAAASUVORK5CYII=', 'png', ICON_SIZE, ICON_SIZE);
+}
+
+sub _raw_audio_generic_base64()
+{
+    return ('
+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',
+    'png', ICON_SIZE, ICON_SIZE);
+}
+
+sub _raw_video_generic_base64()
+{
+    return ('
+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
+AABJRU5ErkJggg==',
+    'png', ICON_SIZE, ICON_SIZE);
 }
 
 sub _template($)
@@ -540,11 +702,7 @@ EOF
                         <%= $item->{filename} %>
                     </details>
                 </a>
-            <% } elsif( $item->{type} eq 'file' ) { %>
-                <details class="filename" open="open">
-                    <%= $item->{filename} %>
-                </details>
-            <% } elsif( $item->{type} eq 'img' ) { %>
+            <% } elsif( $item->{type} eq 'image' ) { %>
                 <a href="<%= $item->{href} %>">
                     <img
                         class="image"
@@ -565,6 +723,20 @@ EOF
                         <% } %>
                    </details>
                 </a>
+            <% } elsif( List::MoreUtils::any { $item->{type} eq $_ } qw(audio video) ) { %>
+                <a href="<%= $item->{href} %>">
+                    <img
+                        src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+                    />
+                    <br/>
+                    <details class="filename" open="open">
+                        <%= $item->{filename} %>
+                    </details>
+                </a>
+            <% } else { %>
+                <details class="filename" open="open">
+                    <%= $item->{filename} %>
+                </details>
             <% } %>
         </div>
 EOF
