@@ -161,7 +161,7 @@ sub show_index($)
     # Get directory index
     my $mask = File::Spec->catfile($r->filename, '*');
     $mask =~ s{(\s)}{\\$1}g;
-    my @index = sort glob $mask;
+    my @index = sort {-d $b cmp -d $a} sort {uc $a cmp uc $b} glob $mask;
 
     # Create index
     for my $path ( @index )
