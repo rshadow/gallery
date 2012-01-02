@@ -1,0 +1,49 @@
+% my ($item) = @_;
+<div class="item">
+    <% if( $item->{type} eq 'dir' ) { %>
+        <a href="<%= $item->{href} %>">
+            <img
+                src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+            />
+            <br/>
+            <details class="filename" open="open">
+                <%= $item->{filename} %>
+            </details>
+        </a>
+    <% } elsif( $item->{type} eq 'image' ) { %>
+        <a href="<%= $item->{href} %>">
+            <img
+                class="image"
+                src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+            />
+            <br/>
+            <details class="filename" open="open">
+                <%= $item->{filename} %>
+            </details>
+            <br/>
+            <details class="extended" open="open">
+                <% if(defined $item->{image}{width} and defined $item->{image}{height} ) { %>
+                    <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
+                    <br/>
+                <% } %>
+                <% if( defined $item->{image}{size} ) { %>
+                    <%= $item->{image}{size} || 0 %> bytes
+                <% } %>
+           </details>
+        </a>
+    <% } elsif( List::MoreUtils::any { $item->{type} eq $_ } qw(audio video) ) { %>
+        <a href="<%= $item->{href} %>">
+            <img
+                src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+            />
+            <br/>
+            <details class="filename" open="open">
+                <%= $item->{filename} %>
+            </details>
+        </a>
+    <% } else { %>
+        <details class="filename" open="open">
+            <%= $item->{filename} %>
+        </details>
+    <% } %>
+</div>

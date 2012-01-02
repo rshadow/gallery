@@ -53,6 +53,8 @@ use constant ICON_SIZE  => 100;
 use constant CACHE_PATH => '/var/cache/gallery';
 use constant CACHE_MODE => 0755;
 
+our $TEMPLATE_PATH = '/home/rubin/workspace/gallery/templates';
+
 use nginx;
 
 use Mojo::Template;
@@ -629,140 +631,27 @@ AABJRU5ErkJggg==',
     'png', ICON_SIZE, ICON_SIZE);
 }
 
-sub _template($)
+sub _template($$)
 {
     my ($part) = @_;
 
     our %template;
 
-    if( $part eq 'top' )
+    unless( any { $part eq $_ } qw(top bottom item) )
     {
-        return $template{top} if $template{top};
-
-        $template{top} = <<'EOF';
-% my ($title) = @_;
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="utf-8">
-    <title><%= $title || '' =%></title>
-    <style type="text/css">
-        body {
-            font: 10pt sans-serif;
-            background-color: #fff;
-        }
-        a {
-            text-decoration: none;
-            color: #000;
-        }
-        div.item {
-            max-width: 128px;
-            height: 128px;
-            max-height: 128px;
-            float: left;
-            text-align: center;
-            margin: 8px;
-            position: relative;
-        }
-        div.item:hover {
-            z-index: 999999;
-        }
-        details.filename {
-            word-wrap: break-word;
-
-        }
-        details.extended {
-            font-size: 8pt;
-            color: #667;
-            background-color: #fff;
-        }
-        img.image {
-            box-shadow: 0px 0px 3px 2px rgba(0,0,0,0.6);
-            border: none;
-        }
-    </style>
-</head>
-<body>
-    <header>
-    </header>
-    <article>
-EOF
-        return $template{top};
-    }
-    if( $part eq 'item' )
-    {
-        return $template{item} if $template{item};
-
-        $template{item} = <<'EOF';
-        % my ($item) = @_;
-        <div class="item">
-            <% if( $item->{type} eq 'dir' ) { %>
-                <a href="<%= $item->{href} %>">
-                    <img
-                        src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                    />
-                    <br/>
-                    <details class="filename" open="open">
-                        <%= $item->{filename} %>
-                    </details>
-                </a>
-            <% } elsif( $item->{type} eq 'image' ) { %>
-                <a href="<%= $item->{href} %>">
-                    <img
-                        class="image"
-                        src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                    />
-                    <br/>
-                    <details class="filename" open="open">
-                        <%= $item->{filename} %>
-                    </details>
-                    <br/>
-                    <details class="extended" open="open">
-                        <% if(defined $item->{image}{width} and defined $item->{image}{height} ) { %>
-                            <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
-                            <br/>
-                        <% } %>
-                        <% if( defined $item->{image}{size} ) { %>
-                            <%= $item->{image}{size} || 0 %> bytes
-                        <% } %>
-                   </details>
-                </a>
-            <% } elsif( List::MoreUtils::any { $item->{type} eq $_ } qw(audio video) ) { %>
-                <a href="<%= $item->{href} %>">
-                    <img
-                        src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
-                    />
-                    <br/>
-                    <details class="filename" open="open">
-                        <%= $item->{filename} %>
-                    </details>
-                </a>
-            <% } else { %>
-                <details class="filename" open="open">
-                    <%= $item->{filename} %>
-                </details>
-            <% } %>
-        </div>
-EOF
-        return $template{item};
-    }
-    elsif( $part eq 'bottom' )
-    {
-        return $template{bottom} if $template{bottom};
-
-        $template{bottom} = <<'EOF';
-    </article>
-    <footer>
-    </footer>
-</body>
-</html>
-EOF
-        return $template{bottom};
-    }
-    else
-    {
+        warn 'Template', $part, 'not defined';
         return;
     }
+
+    return $template{ $part } if $template{ $part };
+
+    open my $f, '<:utf8', File::Spec->catfile($TEMPLATE_PATH, $part.'.html.tt')
+        or return;
+    local $/;
+    $template{ $part } = <$f>;
+    close $f;
+
+    return $template{ $part };
 }
 
 1;
