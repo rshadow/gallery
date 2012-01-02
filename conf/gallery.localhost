@@ -3,17 +3,29 @@ server {
 
     server_name             gallery.localhost www.gallery.localhost;
 
-    # Логи
+    # Logs
     access_log              /var/log/nginx/gallery.access.log;
     error_log               /var/log/nginx/gallery.error.log;
 
-    # Включим сжатие для статики
+    # Option: enable compression
     gzip                    on;
     gzip_min_length         1000;
     gzip_disable            msie6;
     gzip_proxied            expired no-cache no-store private auth;
-    gzip_types 				image/png image/gif image/jpeg image/jpg
-                            image/xbm image/gd image/gd2;
+
+    # Option: basic authorization
+#    auth_basic              "My Gallery";
+#    auth_basic_user_file    /etc/ngnix/users.htpasswd;
+
+    # Option: SSL
+#    ssl                     on;
+#    ssl_certificate         /etc/ssl/certs/ssl-cert-snakeoil.pem;
+#    ssl_certificate_key     /etc/ssl/private/ssl-cert-snakeoil.key;
+#    ssl_session_cache       shared:SSL:10m;
+#    ssl_session_timeout     10m;
+#    ssl_protocols           SSLv3 TLSv1;
+#    ssl_ciphers             ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:_EXP;
+#    ssl_prefer_server_ciphers on;
 
     location / {
         perl  Nginx::Module::Gallery::handler;
