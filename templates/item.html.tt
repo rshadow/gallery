@@ -42,6 +42,10 @@
             </details>
         </a>
     <% } else { %>
+        <img
+            src="data:image/<%= $item->{image}{type} %>;base64,<%= $item->{image}{raw} %>"
+        />
+        <br/>
         <details class="filename" open="open">
             <%= $item->{filename} %>
         </details>
