@@ -649,6 +649,7 @@ sub _template($)
     <style type="text/css">
         body {
             font: 10pt sans-serif;
+            background-color: #fff;
         }
         a {
             text-decoration: none;
@@ -661,6 +662,10 @@ sub _template($)
             float: left;
             text-align: center;
             margin: 8px;
+            position: relative;
+        }
+        div.item:hover {
+            z-index: 999999;
         }
         details.filename {
             word-wrap: break-word;
@@ -669,6 +674,7 @@ sub _template($)
         details.extended {
             font-size: 8pt;
             color: #667;
+            background-color: #fff;
         }
         img.image {
             box-shadow: 0px 0px 3px 2px rgba(0,0,0,0.6);
