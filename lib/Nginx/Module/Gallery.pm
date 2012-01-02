@@ -149,7 +149,7 @@ sub show_index($)
             filename    => File::Spec->updir,
             type        => 'dir',
             href        => $updir,
-            image       => {
+            icon        => {
                 raw     => $raw,
                 type    => $mime,
             },
@@ -174,16 +174,20 @@ sub show_index($)
             path        => $path,
             filename    => $filename,
             href        => File::Spec->catfile($r->uri, $filename),
+            size        => -s $path,
         );
 
         # For folders get standart icon
-        if( -d $path )
+        if( -d _ )
         {
             my ($raw, $mime) = _icon_generic('folder');
 
             # Save icon and some image information
-            $item{image}{raw}     = $raw;
-            $item{image}{type}    = $mime;
+            $item{icon}{raw}    = $raw;
+            $item{icon}{type}   = $mime;
+
+            # Remove directory size
+            delete $item{size};
 
             $item{type} = 'dir';
         }
@@ -209,11 +213,10 @@ sub show_index($)
                     unless $raw;
 
             # Save icon and some image information
-            $item{image}{raw}     = $raw;
-            $item{image}{type}    = $mime;
-            $item{image}{width}   = $image_width;
-            $item{image}{height}  = $image_height;
-            $item{image}{size}    = -s _;
+            $item{icon}{raw}        = $raw;
+            $item{icon}{type}       = $mime;
+            $item{image}{width}     = $image_width;
+            $item{image}{height}    = $image_height;
 #            $item{image}{mime}    = $mimetypes->mimeTypeOf( $path ) || $unknown;
 
             $item{type} = 'image';
@@ -225,11 +228,8 @@ sub show_index($)
                 _icon_generic('audio-x-generic');
 
             # Save icon and some image information
-            $item{image}{raw}     = $raw;
-            $item{image}{type}    = $mime;
-            $item{image}{width}   = $image_width;
-            $item{image}{height}  = $image_height;
-            $item{image}{size}    = -s _;
+            $item{icon}{raw}    = $raw;
+            $item{icon}{type}   = $mime;
 
             $item{type} = 'audio';
         }
@@ -240,11 +240,8 @@ sub show_index($)
                 _icon_generic('video-x-generic');
 
             # Save icon and some image information
-            $item{image}{raw}     = $raw;
-            $item{image}{type}    = $mime;
-            $item{image}{width}   = $image_width;
-            $item{image}{height}  = $image_height;
-            $item{image}{size}    = -s _;
+            $item{icon}{raw}    = $raw;
+            $item{icon}{type}   = $mime;
 
             $item{type} = 'video';
         }
@@ -254,11 +251,8 @@ sub show_index($)
                 _icon_generic( ICON_TEXT );
 
             # Save icon and some image information
-            $item{image}{raw}     = $raw;
-            $item{image}{type}    = $mime;
-            $item{image}{width}   = $image_width;
-            $item{image}{height}  = $image_height;
-            $item{image}{size}    = -s _;
+            $item{icon}{raw}    = $raw;
+            $item{icon}{type}   = $mime;
 
             $item{type} = 'file';
         }
