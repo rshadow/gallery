@@ -153,7 +153,6 @@ sub show_index($)
         my %item = (
             path        => File::Spec->updir,
             filename    => File::Spec->updir,
-            type        => 'dir',
             href        => $updir,
             icon        => {
                 raw     => $icon->{raw},
@@ -183,8 +182,7 @@ sub show_index($)
             filename    => $filename,
             href        => File::Spec->catfile($r->uri, $filename),
             size        => $human,
-            bytes       => $bytes,
-            type        => $mime->mediaType,
+            mime        => $mime,
         );
 
         # For folders get standart icon
@@ -196,10 +194,9 @@ sub show_index($)
             $item{icon}{raw}    = $icon->{raw};
             $item{icon}{mime}   = $icon->{mime};
 
-            # Remove directory size
+            # Remove directory fails
             delete $item{size};
-
-            $item{type} = 'dir';
+            delete $item{mime};
         }
         # For images make icons and get some information
         elsif( $mime->mediaType eq 'image' )
@@ -216,7 +213,7 @@ sub show_index($)
             # Make generic image icon
             unless( $icon )
             {
-                $icon = _icon_generic( MIME_UNKNOWN );
+                $icon = _icon_generic( $path );
             }
 
             # Save icon and some image information
@@ -294,7 +291,7 @@ sub get_icon_form_cache($)
         mime    => $mimetypes->mimeTypeOf( $ext ),
         image   => {
             width   => $image_width,
-            heigth  => $image_height,
+            height  => $image_height,
         },
     };
 }
@@ -362,7 +359,7 @@ sub make_icon($)
     my $image   = GD::Image->new( $raw );
     return unless $image;
 
-    # Count icon width and heigth
+    # Count icon width and height
     my ($image_width, $image_height, $width, $height);
 
     $image_width  = $width  = $image->width;
@@ -407,10 +404,10 @@ sub make_icon($)
         raw     => $raw,
         mime    => $mime,
         width   => $width,
-        heigth  => $height,
+        height  => $height,
         image   => {
             width   => $image_width,
-            heigth  => $image_height,
+            height  => $image_height,
         },
     };
 }
