@@ -279,9 +279,11 @@ sub get_icon_form_cache($)
     my ($filename, $dir) = File::Basename::fileparse($path);
 
     # Find icon
-    my $cache_mask = File::Spec->catfile(
-        $CACHE_PATH, $dir, sprintf( '%s.*.base64', _get_md5_image( $path ) ) );
-    my ($cache_path) = glob $cache_mask;
+    my $mask = File::Spec->catdir($CACHE_PATH, $dir);
+    $mask =~ s{([\s'".?*])}{\\$1}g;
+    $mask = File::Spec->catfile($mask,
+        sprintf( '%s.*.base64', _get_md5_image( $path ) ) );
+    my ($cache_path) = glob $mask;
 
     # Icon not found
     return () unless $cache_path;
