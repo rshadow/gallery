@@ -41,11 +41,17 @@ BEGIN {
 # TEST
 ################################################################################
 
-note 'Internal images tests';
-_test_icon_params( Folder   => Nginx::Module::Gallery::_raw_folder_base64() );
-_test_icon_params( UpDir    => Nginx::Module::Gallery::_raw_updir_base64()  );
-_test_icon_params( Generic  =>
-    Nginx::Module::Gallery::_raw_image_generic_base64() );
+note 'Common icons tests';
+my $common_icon_path = catfile rel2abs(dirname __FILE__), '../icons/*.png';
+for my $path (glob $common_icon_path)
+{
+    my $filename    = basename($path);
+    my $value       = basename($path, '.png');
+
+    _test_icon_params( $value =>
+        Nginx::Module::Gallery::_icon_common( $value )
+    );
+}
 
 note 'Cache images tests';
 my $data_path = catfile rel2abs(dirname __FILE__), 'data/*.png';
@@ -56,13 +62,10 @@ for my $path (glob $data_path)
     my $md5 = Nginx::Module::Gallery::_get_md5_image( $path );
     ok length $md5,             'Get image MD5: '. $md5;
 
-    my ($raw, $mime, $image_width, $image_height) =
-        Nginx::Module::Gallery::make_icon( $path );
+    my $icon = Nginx::Module::Gallery::make_icon( $path );
+    _test_icon_params( make_icon => $icon );
 
-    _test_icon_params( Created => ($raw, $mime, $image_width, $image_height) );
-
-    my $cache = Nginx::Module::Gallery::save_icon_in_cache(
-        $path, $raw, $mime, $image_width, $image_height);
+    my $cache = Nginx::Module::Gallery::save_icon_in_cache($path, $icon);
     SKIP:
     {
         skip 'Cache not aviable', 2 unless $cache;
@@ -70,22 +73,23 @@ for my $path (glob $data_path)
         ok -f $cache,               'Icon stored in: '. $cache;
         ok -s _,                    'Icon not empty';
 
-        _test_icon_params( Loaded =>
+        _test_icon_params( save_icon_in_cache =>
             Nginx::Module::Gallery::get_icon_form_cache( $path ) );
     }
 }
 
 sub _test_icon_params
 {
-    my ($name, $raw, $mime, $image_width, $image_height) = @_;
+    my ($name, $icon) = @_;
 
-    ok length $raw,             sprintf '%s image BASE64 data', $name;
-    ok length $mime,            sprintf '%s image mime type: %s', $name, $mime;
-    ok length $image_width,     sprintf '%s image width: %s', $name,
-                                    $image_width;
-    ok length $image_height,    sprintf '%s image height: %s', $name,
-                                    $image_height;
+    ok length $icon->{raw},       sprintf '%s image BASE64 data', $name;
+    ok length $icon->{mime},      sprintf '%s image mime type: %s', $name,
+                                    $icon->{mime};
+#    ok length $icon->{width},     sprintf '%s image width: %s', $name,
+#                                    $icon->{width};
+#    ok length $icon->{height},    sprintf '%s image height: %s', $name,
+#                                    $icon->{height};
 
-    my $size = length $raw;
+    my $size = length $icon->{raw};
     ok $size < 16384,           sprintf '%s image < 16Kb: %s', $name, $size;
 }
