@@ -62,7 +62,7 @@ our $ICONS_PATH  = '/home/rubin/workspace/gallery/icons';
 use constant ICON_FOLDER    => 'folder';
 use constant ICON_UPDIR     => 'edit-undo';
 
-use constant MIME_UNKNOWN   => 'text/plain';
+use constant MIME_UNKNOWN   => 'unknown/unknown';
 
 use nginx;
 
@@ -80,8 +80,12 @@ use GD;
 GD::Image->trueColor(1);
 
 # MIME definition objects
-my $mimetypes = MIME::Types->new;
-my $unknown   = $mimetypes->type( MIME_UNKNOWN );
+our $mimetypes = MIME::Types->new;
+our $unknown   = MIME::Type->new(
+    encoding    => 'base64',
+    simplified  => 'unknown/unknown',
+    type        => 'x-unknown/x-unknown'
+);
 
 sub handler($)
 {
@@ -491,12 +495,31 @@ sub _icon_generic
     our %generic;
     return $generic{$str} if $generic{$str};
 
-    # Get icon path
-    my $icon_path = File::Spec->catfile($ICONS_PATH, 'mime',
-        $mime->mediaType.'-x-generic.png');
+    my @icon_path = (
+        File::Spec->catfile($ICONS_PATH, 'mime',
+            $mime->mediaType.'.png'),
+        File::Spec->catfile($ICONS_PATH, 'mime',
+            $mime->mediaType.'-'.$mime->subType.'.png'),
+        File::Spec->catfile($ICONS_PATH, 'mime',
+            $mime->mediaType.'-x-generic.png')
+    );
 
-    # Load icon
-    my $icon = GD::Image->new( $icon_path );
+    # Load icon from varios paths
+    my ($icon, $icon_path);
+    for my $search_path ( @icon_path )
+    {
+        # Skip if file not exists
+        next unless -f $search_path;
+
+        # Skip if can`t load image
+        my $try = GD::Image->new( $search_path );
+        next unless $try;
+
+        # Save icon and stop search
+        $icon      = $try;
+        $icon_path = $search_path;
+        last;
+    }
     # Try to load default icon for unknown type
     return _icon_generic( MIME_UNKNOWN ) if ! $icon and $mime ne MIME_UNKNOWN;
     # Return unless icon =(
