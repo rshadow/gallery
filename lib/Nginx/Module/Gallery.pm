@@ -47,7 +47,10 @@ Icon for image will be created and cached on first request.
 our $VERSION        = 0.01;
 
 # Max icon size
-our $ICON_SIZE      = 100;
+our $ICON_SIZE              = 100;
+# Icon comression level 0-9
+our $ICON_COMPRESSION_LEVEL = 9;
+
 # Path to cache and mode
 our $CACHE_PATH     = '/var/cache/gallery';
 our $CACHE_MODE     = 0755;
@@ -396,9 +399,10 @@ sub make_icon($)
     );
 
     # Make BASE64 encoding for inline
-    $raw = MIME::Base64::encode_base64( $icon->png );
+    $raw = MIME::Base64::encode_base64( $icon->png( $ICON_COMPRESSION_LEVEL ) );
 
-    my $mime = $mimetypes->mimeTypeOf( $path ) || $unknown;
+    # Get mime type as icon type
+    my $mime = $mimetypes->mimeTypeOf( 'png' ) || $unknown;
 
     return {
         raw     => $raw,
@@ -461,7 +465,8 @@ sub _icon_common
     $icon->saveAlpha(1);
 
     # Encode icon
-    $common{$name}{raw}     = MIME::Base64::encode_base64( $icon->png );
+    $common{$name}{raw}     =
+        MIME::Base64::encode_base64( $icon->png( $ICON_COMPRESSION_LEVEL ) );
     $common{$name}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
     $common{$name}{width}   = $icon->width;
     $common{$name}{height}  = $icon->height;
@@ -494,13 +499,15 @@ sub _icon_generic
     my $icon = GD::Image->new( $icon_path );
     # Try to load default icon for unknown type
     return _icon_generic( MIME_UNKNOWN ) if ! $icon and $mime ne MIME_UNKNOWN;
+    # Return unless icon =(
     return unless $icon;
 
     # Save alpha channel
     $icon->saveAlpha(1);
 
     # Encode icon
-    $generic{$str}{raw}     = MIME::Base64::encode_base64( $icon->png );
+    $generic{$str}{raw}     =
+        MIME::Base64::encode_base64( $icon->png( $ICON_COMPRESSION_LEVEL ) );
     $generic{$str}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
     $generic{$str}{width}   = $icon->width;
     $generic{$str}{height}  = $icon->height;
