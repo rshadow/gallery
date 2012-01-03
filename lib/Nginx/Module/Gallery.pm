@@ -9,7 +9,7 @@ use 5.10.1;
 
 Gallery - perl module for nginx.
 
-=head SYNOPSIS
+=head1 SYNOPSIS
 
 Example of nginx http section:
 
@@ -33,6 +33,14 @@ Example of nginx server section:
             root /usr/share/images;
         }
     }
+
+=head1 DESCRIPTION
+
+This module not for nginx event machine! One nginx worker (typically 8) used for
+slow create icons!
+
+Icon for image will be created and cached on first request.
+
 =cut
 
 # Module version
