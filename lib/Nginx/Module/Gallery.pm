@@ -247,9 +247,9 @@ sub show_index($)
     return OK;
 }
 
-=head2 _get_md5_image
+=head2 _get_md5_image $path
 
-Return unque MD5 hex string for image file
+Return unque MD5 hex string for image file b y it`s $path
 
 =cut
 
@@ -259,6 +259,12 @@ sub _get_md5_image($)
     my ($size, $mtime) = ( stat($path) )[7,9];
     return md5_hex join( ',', $path, $size, $mtime );
 }
+
+=head2 get_icon_form_cache $path
+
+Check icon for image by $path in cache and return it if exists
+
+=cut
 
 sub get_icon_form_cache($)
 {
@@ -292,6 +298,12 @@ sub get_icon_form_cache($)
         },
     };
 }
+
+=head2 save_icon_in_cache
+
+Save $icon in cache for image by $path
+
+=cut
 
 sub save_icon_in_cache($$)
 {
@@ -329,6 +341,12 @@ sub save_icon_in_cache($$)
 
     return $cache;
 }
+
+=head2 make_icon $path
+
+Get $path of image and make icon for it
+
+=cut
 
 sub make_icon($)
 {
@@ -397,34 +415,46 @@ sub make_icon($)
     };
 }
 
-sub _template($$)
+=head2 _template $name
+
+Retrun template my $name
+
+=cut
+
+sub _template($)
 {
-    my ($part) = @_;
+    my ($name) = @_;
 
     # Return template if loaded
     our %template;
-    return $template{ $part } if $template{ $part };
+    return $template{ $name } if $template{ $name };
 
     # Load template
-    my $path = File::Spec->catfile($TEMPLATE_PATH, $part.'.html.ep');
+    my $path = File::Spec->catfile($TEMPLATE_PATH, $name.'.html.ep');
     open my $f, '<:utf8', $path or return;
     local $/;
-    $template{ $part } = <$f>;
+    $template{ $name } = <$f>;
     close $f;
 
-    return $template{ $part };
+    return $template{ $name };
 }
+
+=head2 _icon_common $name
+
+Return common icon by $name
+
+=cut
 
 sub _icon_common
 {
-    my ($type) = @_;
+    my ($name) = @_;
 
     our %common;
     # Return if already loaded
-    return $common{$type} if $common{$type};
+    return $common{$name} if $common{$name};
 
     # Get icon path
-    my $icon_path = File::Spec->catfile($ICONS_PATH, $type.'.png');
+    my $icon_path = File::Spec->catfile($ICONS_PATH, $name.'.png');
 
     # Load icon
     my $icon = GD::Image->new( $icon_path );
@@ -434,13 +464,19 @@ sub _icon_common
     $icon->saveAlpha(1);
 
     # Encode icon
-    $common{$type}{raw}     = MIME::Base64::encode_base64( $icon->png );
-    $common{$type}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
-    $common{$type}{width}   = $icon->width;
-    $common{$type}{height}  = $icon->height;
+    $common{$name}{raw}     = MIME::Base64::encode_base64( $icon->png );
+    $common{$name}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
+    $common{$name}{width}   = $icon->width;
+    $common{$name}{height}  = $icon->height;
 
-    return $common{$type};
+    return $common{$name};
 }
+
+=head2 _icon_generic $path
+
+Return generic icon for file by $path
+
+=cut
 
 sub _icon_generic
 {
