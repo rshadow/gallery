@@ -208,15 +208,15 @@ sub show_index($)
                         if $raw;
             }
             # Make generic image icon
-            ($raw, $mime, $image_width, $image_height) =
+            ($raw, $mime) =
                 _icon_generic('image-x-generic')
                     unless $raw;
 
             # Save icon and some image information
             $item{icon}{raw}        = $raw;
             $item{icon}{type}       = $mime;
-            $item{image}{width}     = $image_width;
-            $item{image}{height}    = $image_height;
+            $item{image}{width}     = $image_width  if defined $image_width;
+            $item{image}{height}    = $image_height if defined $image_height;
 #            $item{image}{mime}    = $mimetypes->mimeTypeOf( $path ) || $unknown;
 
             $item{type} = 'image';
@@ -430,7 +430,7 @@ sub _icon_generic
     # Encode icon
     $icon{$mime} = MIME::Base64::encode_base64( $icon{$mime}->png );
 
-    return ($icon{$mime}, 'png', $ICON_SIZE, $ICON_SIZE);
+    return ($icon{$mime}, 'png');
 }
 
 =head2 as_human_size(NUM)
