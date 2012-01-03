@@ -490,20 +490,32 @@ sub _icon_generic
 {
     my ($path) = @_;
 
+    my ($filename, $dir) = File::Basename::fileparse($path);
+    my ($extension) = $filename =~ m{\.(\w+)$};
+
     my $mime    = $mimetypes->mimeTypeOf( $path ) || $unknown;
     my $str     = "$mime";
+    my $media   = $mime->mediaType;
+    my $sub     = $mime->subType;
+    my $full    = join '-', $mime =~ m{^(.*?)/(.*)$};
 
     # Return icon if already loaded
     our %generic;
     return $generic{$str} if $generic{$str};
 
     my @icon_path = (
+        # Full MIME type
         File::Spec->catfile($ICONS_PATH, 'mime',
-            $mime->mediaType.'.png'),
+            sprintf( '%s-%s.png', $media, $sub ) ),
+        # MIME::Type bug subType is empty =(
         File::Spec->catfile($ICONS_PATH, 'mime',
-            $mime->mediaType.'-'.$mime->subType.'.png'),
+            sprintf( '%s.png', $full ) ),
+        # Common by media type
         File::Spec->catfile($ICONS_PATH, 'mime',
-            $mime->mediaType.'-x-generic.png')
+            sprintf( '%s.png', $media ) ),
+        # By file extension
+        File::Spec->catfile($ICONS_PATH, 'mime',
+            sprintf( '%s.png', $extension ) ),
     );
 
     # Load icon from varios paths
