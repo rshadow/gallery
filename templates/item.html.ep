@@ -1,5 +1,10 @@
 % my ($item) = @_;
-<div class="item" title="<% if( defined $item->{mime} ) { %><%= "$item->{mime}" =%><% } %>">
+<div
+    class="item"
+    <% if( defined $item->{mime} ) { =%>
+        title="<%= "$item->{mime}" =%>"
+    <% } =%>
+>
     <a href="<%= $item->{href} %>">
             <img
                 <% if(exists $item->{image}) { %>class="image" <% } %>
