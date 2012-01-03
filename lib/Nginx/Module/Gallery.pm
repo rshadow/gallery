@@ -25,17 +25,7 @@ Example of nginx server section:
     server {
         listen                  80;
 
-        server_name             gallery.localhost www.gallery.localhost;
-
-        access_log              /var/log/nginx/gallery.access.log;
-        error_log               /var/log/nginx/gallery.error.log;
-
-        gzip                    on;
-        gzip_min_length         1000;
-        gzip_disable            msie6;
-        gzip_proxied            expired no-cache no-store private auth;
-        gzip_types              image/png image/gif image/jpeg image/jpg
-                                image/xbm image/gd image/gd2;
+        server_name             gallery.localhost;
 
         location / {
             perl  Nginx::Module::Gallery::handler;
@@ -168,13 +158,15 @@ sub show_index($)
     {
         # Get filename
         my ($filename, $dir) = File::Basename::fileparse($path);
+        my ($digit, $letter, $bytes, $human) = _as_human_size( -s $path );
 
         # Make item info hash
         my %item = (
             path        => $path,
             filename    => $filename,
             href        => File::Spec->catfile($r->uri, $filename),
-            size        => -s $path,
+            size        => $human,
+            bytes       => $bytes,
         );
 
         # For folders get standart icon
@@ -431,6 +423,65 @@ sub _icon_generic
     $icon{$mime} = MIME::Base64::encode_base64( $icon{$mime}->png );
 
     return ($icon{$mime}, 'png', $ICON_SIZE, $ICON_SIZE);
+}
+
+=head2 as_human_size(NUM)
+
+converts big numbers to small 1024 = 1K, 1024**2 == 1M, etc
+
+=cut
+
+sub _as_human_size($)
+{
+    my ($size, $sign) = (shift, 1);
+
+    my %result = (
+        original    => $size,
+        digit       => 0,
+        letter      => '',
+        human       => 'N/A',
+        byte        => '',
+    );
+
+    {{
+        last unless $size;
+        last unless $size >= 0;
+
+        my @suffixes = ('', 'K', 'M', 'G', 'T', 'P', 'E');
+        my ($limit, $div) = (1024, 1);
+        for (@suffixes)
+        {
+            if ($size < $limit || $_ eq $suffixes[-1])
+            {
+                $size = $sign * $size / $div;
+                if ($size < 10)
+                {
+                    $size = sprintf "%1.2f", $size;
+                }
+                elsif ($size < 50)
+                {
+                    $size = sprintf "%1.1f", $size;
+                }
+                else
+                {
+                    $size = int($size);
+                }
+                s/(?<=\.\d)0$//, s/\.00?$// for $size;
+                $result{digit}  = $size;
+                $result{letter} = $_;
+                $result{byte}   = 'B';
+                last;
+            }
+            $div = $limit;
+            $limit *= 1024;
+        }
+    }}
+
+    $result{human} = $result{digit} . $result{letter} . $result{byte};
+
+    return ($result{digit}, $result{letter}, $result{byte}, $result{human})
+        if wantarray;
+    return $result{human};
 }
 
 1;

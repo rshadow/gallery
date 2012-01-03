@@ -16,7 +16,7 @@
                     <br/>
                 <% } %>
                 <% if( defined $item->{size} ) { %>
-                    <%= $item->{size} || 0 %> bytes
+                    <%= $item->{size} || '' %>
                 <% } %>
            </details>
         </a>
