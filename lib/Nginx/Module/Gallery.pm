@@ -135,7 +135,7 @@ sub show_index($)
 
     # Send top of index page
     $r->send_http_header("text/html");
-    $r->print( $mt->render( _template('top'), $title ) );
+    $r->print( $mt->render( _template('top'), $TEMPLATE_PATH, $title ) );
 
     # Add updir for non root directory
     unless( $r->uri eq '/' )
@@ -409,7 +409,7 @@ sub _template($$)
     return $template{ $part } if $template{ $part };
 
     # Load template
-    my $path = File::Spec->catfile($TEMPLATE_PATH, $part.'.html.tt');
+    my $path = File::Spec->catfile($TEMPLATE_PATH, $part.'.html.ep');
     open my $f, '<:utf8', $path or return;
     local $/;
     $template{ $part } = <$f>;
