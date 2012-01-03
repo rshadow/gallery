@@ -126,9 +126,16 @@ sub show_index($)
 #        simplified  => 'unknown/unknown',
 #        type        => 'x-unknown/x-unknown');
 
+    # Make title from path
+    my @tpath = split m{/}, $r->uri;
+    shift @tpath;
+    push @tpath, '/' unless @tpath;
+    my $title = 'Gallery - ' . join ' : ', @tpath;
+    undef @tpath;
+
     # Send top of index page
     $r->send_http_header("text/html");
-    $r->print( $mt->render( _template('top'), 'Gallery: '.$r->uri) );
+    $r->print( $mt->render( _template('top'), $title ) );
 
     # Add updir for non root directory
     unless( $r->uri eq '/' )
