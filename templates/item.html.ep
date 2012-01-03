@@ -1,14 +1,12 @@
 % my ($item) = @_;
-<div
-    class="item"
-    <% if( defined $item->{mime} ) { =%>
-        title="<%= "$item->{mime}" =%>"
-    <% } =%>
->
+<div class="item">
     <a href="<%= $item->{href} %>">
         <% if( defined $item->{icon} ) { =%>
             <img
-                <% if(exists $item->{image}) { %>class="image" <% } %>
+                <% if( exists $item->{image} ) { %>class="image" <% } %>
+                <% if( defined $item->{mime} ) { =%>
+                    title="<%= "$item->{mime}" =%>"
+                <% } =%>
                 src="data:<%= $item->{icon}{mime} %>;base64,<%= $item->{icon}{raw} %>"
             />
         <% } =%>
