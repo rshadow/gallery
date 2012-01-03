@@ -171,10 +171,7 @@ sub show_index($)
     }
 
     # Get directory index
-    my $mask = $r->filename;
-    $mask =~ s{([\s'".?*])}{\\$1}g;
-    $mask = File::Spec->catfile($mask, '*');
-
+    my $mask  = File::Spec->catfile( _escape_path( $r->filename ), '*' );
     my @index = sort {-d $b cmp -d $a} sort {uc $a cmp uc $b} glob $mask;
 
     # Create index
@@ -255,7 +252,7 @@ sub show_index($)
 
 =head2 _get_md5_image $path
 
-Return unque MD5 hex string for image file b y it`s $path
+Return unque MD5 hex string for image file by it`s $path
 
 =cut
 
@@ -264,6 +261,20 @@ sub _get_md5_image($)
     my ($path) = @_;
     my ($size, $mtime) = ( stat($path) )[7,9];
     return md5_hex join( ',', $path, $size, $mtime );
+}
+
+=head2 _escape_path $path
+
+Return escaped $path
+
+=cut
+
+sub _escape_path($)
+{
+    my ($path) = @_;
+    my $escaped = $path;
+    $escaped =~ s{([\s'".?*])}{\\$1}g;
+    return $escaped;
 }
 
 =head2 get_icon_form_cache $path
@@ -279,10 +290,10 @@ sub get_icon_form_cache($)
     my ($filename, $dir) = File::Basename::fileparse($path);
 
     # Find icon
-    my $mask = File::Spec->catdir($CACHE_PATH, $dir);
-    $mask =~ s{([\s'".?*])}{\\$1}g;
-    $mask = File::Spec->catfile($mask,
-        sprintf( '%s.*.base64', _get_md5_image( $path ) ) );
+    my $mask = File::Spec->catfile(
+        _escape_path( File::Spec->catdir($CACHE_PATH, $dir) ),
+        sprintf( '%s.*.base64', _get_md5_image( $path ) )
+    );
     my ($cache_path) = glob $mask;
 
     # Icon not found
