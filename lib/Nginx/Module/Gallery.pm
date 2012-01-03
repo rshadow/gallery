@@ -47,7 +47,7 @@ our $CACHE_MODE     = 0755;
 our $TEMPLATE_PATH  = '/home/rubin/workspace/gallery/templates';
 # Icons path
 our $ICONS_PATH  = '/home/rubin/workspace/gallery/icons';
-
+# Fixed icons
 use constant ICON_UPDIR => 'edit-undo';
 use constant ICON_TEXT  => 'text-x-preview';
 
