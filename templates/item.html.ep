@@ -15,11 +15,13 @@
                 <%= $item->{filename} =%>
             </details>
             <br/>
-            <details class="extended" open="open">
+            <details class="extended wxh" open="open">
                 <% if(defined $item->{image}{width} and defined $item->{image}{height} ) { =%>
                     <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
-                    <br/>
                 <% } =%>
+            </details>
+            <br/>
+            <details class="extended size" open="open">
                 <% if( defined $item->{size} ) { =%>
                     <%= $item->{size} || '' =%>
                 <% } =%>
