@@ -15,3 +15,12 @@ deb-dh-make:
 	
 deb-changelog:
 	dch --newversion $(VERSION)
+	
+install:
+	mkdir /var/cache/gallery
+	chown www-data:www-data /var/cache/gallery
+	chmod 0775 /var/cache/gallery
+	
+uninstall:
+	rm -fr /var/cache/gallery
+	
