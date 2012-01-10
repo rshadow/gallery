@@ -44,7 +44,7 @@ Icon for image will be created and cached on first request.
 =cut
 
 # Module version
-our $VERSION        = 0.01;
+our $VERSION = 0.01;
 
 # Max icon size
 our $ICON_SIZE              = 100;
@@ -57,12 +57,12 @@ our $CACHE_MODE     = 0755;
 # Template path
 our $TEMPLATE_PATH  = '/home/rubin/workspace/gallery/templates';
 # Icons path
-our $ICONS_PATH  = '/home/rubin/workspace/gallery/icons';
+our $ICONS_PATH     = '/home/rubin/workspace/gallery/icons';
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
 use constant ICON_UPDIR     => 'edit-undo';
 
-use constant MIME_UNKNOWN   => 'unknown/unknown';
+use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
 use nginx;
 
