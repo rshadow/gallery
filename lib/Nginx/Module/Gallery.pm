@@ -45,7 +45,7 @@ All icons cached on first request. Next show will be more fast.
 =cut
 
 # Module version
-our $VERSION = 0.01;
+our $VERSION = 0.1.1;
 
 # Max icon size
 our $ICON_SIZE              = 100;
