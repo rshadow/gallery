@@ -105,6 +105,10 @@ sub handler($)
     return show_index($r);
 }
 
+=head1 FUNCTIONS
+
+=cut
+
 =head2 show_image
 
 Send image to client

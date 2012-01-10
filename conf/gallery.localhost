@@ -1,3 +1,7 @@
+# This is virtual server example file for gallery
+# Copy content in virtual server config file or copy this file in
+# /etc/nginx/sites-available (aviable in some distrs) and enable this server
+
 server {
     listen                  80;
 
