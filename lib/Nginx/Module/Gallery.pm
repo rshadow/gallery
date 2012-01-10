@@ -36,10 +36,11 @@ Example of nginx server section:
 
 =head1 DESCRIPTION
 
-This module not for nginx event machine! One nginx worker (typically 8) used for
-slow create icons!
+This module not for production servers! But for single user usage.
+Gallery don`t use nginx event machine, so one nginx worker per connect
+(typically 8) used for slow create icons!
 
-Icon for image will be created and cached on first request.
+All icons cached on first request. Next show will be more fast.
 
 =cut
 
