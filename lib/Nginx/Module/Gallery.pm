@@ -45,25 +45,73 @@ All icons cached on first request. Next show will be more fast.
 
 =cut
 
+=head1 VARIABLES
+
+=cut
+
 # Module version
 our $VERSION = 0.1.1;
 
-# Max icon size
+=head2 ICON_SIZE
+
+Max icon size
+
+=cut
+
 our $ICON_SIZE              = 100;
-# Icon comression level 0-9
+
+=head2 ICON_COMPRESSION_LEVEL
+
+Icon comression level 0-9
+
+=cut
+
 our $ICON_COMPRESSION_LEVEL = 9;
 
-# Path to cache and mode
+=head2 ICON_BACKGROUND_COLOR
+
+Icon background color (R, G, B)
+
+=cut
+
+our @ICON_BACKGROUND_COLOR = (255, 255, 255);
+
+=head2 CACHE_PATH
+
+Path for thumbnails cache
+
+=cut
+
 our $CACHE_PATH     = '/var/cache/gallery';
+
+=head2 CACHE_MODE
+
+Mode for created thumbnails
+
+=cut
+
 our $CACHE_MODE     = 0755;
-# Template path
+
+=head2 TEMPLATE_PATH
+
+Templates path
+
+=cut
+
 our $TEMPLATE_PATH  = '/home/rubin/workspace/gallery/templates';
-# Icons path
+
+=head2 ICONS_PATH
+
+Path for MIME and other icons
+
+=cut
+
 our $ICONS_PATH     = '/home/rubin/workspace/gallery/icons';
+
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
 use constant ICON_UPDIR     => 'edit-undo';
-
+# MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
 use nginx;
@@ -89,6 +137,16 @@ our $unknown   = MIME::Type->new(
     type        => 'x-unknown/x-unknown'
 );
 
+=head1 FUNCTIONS
+
+=cut
+
+=head2 handler $r
+
+Main loop handler
+
+=cut
+
 sub handler($)
 {
     my $r = shift;
@@ -106,7 +164,7 @@ sub handler($)
     return show_index($r);
 }
 
-=head1 FUNCTIONS
+=head1 PRIVATE FUNCTIONS
 
 =cut
 
@@ -412,11 +470,12 @@ sub make_icon($)
         $height = $ICON_SIZE;
     }
 
-    # Create icon image
+    # Create icon image for all images. Very important to make icon on specified
+    # background color for images with alpha channel.
     my $icon = GD::Image->new( $width, $height, 1 );
     return unless $icon;
     # Fill white
-    $icon->fill(0, 0, $icon->colorAllocate(255,255,255) );
+    $icon->fill(0, 0, $icon->colorAllocate( @ICON_BACKGROUND_COLOR ) );
     # Copy and resize from original image
     $icon->copyResampled($image, 0, 0, 0, 0,
         $width, $height,
