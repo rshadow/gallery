@@ -7,7 +7,8 @@ use 5.10.1;
 
 =head1 NAME
 
-Gallery - perl module for nginx.
+Nginx::Module::Gallery - Gallery perl module for nginx. Like simple file index
+but thumbnail replace default icon for image.
 
 =head1 SYNOPSIS
 
