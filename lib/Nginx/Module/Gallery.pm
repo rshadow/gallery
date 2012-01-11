@@ -111,6 +111,7 @@ our $ICONS_PATH     = '/home/rubin/workspace/gallery/icons';
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
 use constant ICON_UPDIR     => 'edit-undo';
+use constant ICON_FAVICON   => 'emblem-photos';
 # MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
@@ -151,8 +152,11 @@ sub handler($)
 {
     my $r = shift;
 
-    # Stop unless GET
-    return HTTP_BAD_REQUEST unless $r->request_method eq 'GET';
+    # Stop unless GET or HEAD
+    return HTTP_BAD_REQUEST
+        unless $r->request_method eq 'GET' or $r->request_method eq 'HEAD';
+    # Return favicon
+    return show_favicon($r) if $r->filename =~ m{favicon\.png$}i;
     # Stop unless dir or file
     return HTTP_NOT_FOUND unless -f $r->filename or -d _;
     # Stop if header only
@@ -182,6 +186,14 @@ sub show_image($)
     return OK;
 }
 
+sub show_favicon($)
+{
+    my $r = shift;
+    $r->send_http_header("image/png");
+    $r->sendfile( $ICONS_PATH . '/' . ICON_FAVICON . '.png' );
+    return OK;
+}
+
 =head2 show_index
 
 Send directory index to client
@@ -207,7 +219,13 @@ sub show_index($)
 
     # Send top of index page
     $r->send_http_header("text/html");
-    $r->print( $mt->render( _template('top'), $TEMPLATE_PATH, $title ) );
+    $r->print(
+        $mt->render(
+            _template('top'),
+            $TEMPLATE_PATH,
+            $title
+        )
+    );
 
     # Add updir for non root directory
     unless( $r->uri eq '/' )
