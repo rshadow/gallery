@@ -132,11 +132,12 @@ GD::Image->trueColor(1);
 
 # MIME definition objects
 our $mimetypes = MIME::Types->new;
-our $unknown   = MIME::Type->new(
+our $mime_unknown   = MIME::Type->new(
     encoding    => 'base64',
     simplified  => 'unknown/unknown',
     type        => 'x-unknown/x-unknown'
 );
+our $mime_png   = $mimetypes->mimeTypeOf( 'png' );
 
 =head1 FUNCTIONS
 
@@ -189,8 +190,15 @@ sub show_image($)
 sub show_favicon($)
 {
     my $r = shift;
-    $r->send_http_header("image/png");
-    $r->sendfile( $ICONS_PATH . '/' . ICON_FAVICON . '.png' );
+
+    # Path to favicon
+    my $favicon_path = File::Spec->catfile(
+        $ICONS_PATH . '/' . ICON_FAVICON . '.png' );
+    # MIME of favicon
+    my $mime = $mimetypes->mimeTypeOf( $favicon_path ) || $mime_unknown;
+
+    $r->send_http_header("$mime");
+    $r->sendfile( $favicon_path );
     return OK;
 }
 
@@ -262,7 +270,7 @@ sub show_index($)
         # Get filename
         my ($filename, $dir) = File::Basename::fileparse($path);
         my ($digit, $letter, $bytes, $human) = _as_human_size( -s $path );
-        my $mime = $mimetypes->mimeTypeOf( $path ) || $unknown;
+        my $mime = $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
 
         # Make item info hash
         my %item = (
@@ -504,7 +512,7 @@ sub make_icon($)
     $raw = MIME::Base64::encode_base64( $icon->png( $ICON_COMPRESSION_LEVEL ) );
 
     # Get mime type as icon type
-    my $mime = $mimetypes->mimeTypeOf( 'png' ) || $unknown;
+    my $mime = $mime_png || $mime_unknown;
 
     return {
         raw     => $raw,
@@ -589,7 +597,7 @@ sub _icon_generic
     my ($filename, $dir) = File::Basename::fileparse($path);
     my ($extension) = $filename =~ m{\.(\w+)$};
 
-    my $mime    = $mimetypes->mimeTypeOf( $path ) || $unknown;
+    my $mime    = $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
     my $str     = "$mime";
     my $media   = $mime->mediaType;
     my $sub     = $mime->subType;
