@@ -7,6 +7,12 @@
                 <% if( defined $item->{mime} ) { =%>
                     title="<%= "$item->{mime}" =%>"
                 <% } =%>
+                <% if( defined $item->{width} ) { =%>
+                    width="<%= $item->{width} =%>"
+                <% } =%>
+                <% if( defined $item->{height} ) { =%>
+                    height="<%= $item->{height} =%>"
+                <% } =%>
                 src="data:<%= $item->{icon}{mime} %>;base64,<%= $item->{icon}{raw} %>"
             />
         <% } =%>
