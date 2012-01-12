@@ -52,13 +52,21 @@ All icons cached on first request. Next show will be more fast.
 # Module version
 our $VERSION = 0.1.1;
 
-=head2 ICON_SIZE
+=head2 ICON_MAX_DIMENSION
 
-Max icon size
+Max icon dimension. In pixels. All thumbnails well be resized to this dimension.
 
 =cut
 
-our $ICON_SIZE              = 100;
+our $ICON_MAX_DIMENSION     = 100; # pixels
+
+=head2 ICON_MAX_SIZE
+
+Max icon size. In bytes. Default 128Kb.
+
+=cut
+
+our $ICON_MAX_SIZE          = 131072; # bytes
 
 =head2 ICON_COMPRESSION_LEVEL
 
@@ -187,6 +195,12 @@ sub show_image($)
     return OK;
 }
 
+=head2 show_favicon
+
+Send favicon
+
+=cut
+
 sub show_favicon($)
 {
     my $r = shift;
@@ -302,7 +316,7 @@ sub show_index($)
             # Try to make icon
             unless( $icon )
             {
-                $icon = make_icon( $path );
+                $icon = make_icon( $path, $mime, $r );
                 # Try to save in cache
                 save_icon_in_cache( $path, $icon ) if $icon;
             }
@@ -457,62 +471,78 @@ Get $path of image and make icon for it
 
 =cut
 
-sub make_icon($)
+sub make_icon($;$$)
 {
-    my ($path) = @_;
+    my ($path, $mime, $r) = @_;
 
     # Get image
-    open my $f, '<:raw', $path or return ();
+    open my $f, '<:raw', $path or return;
     local $/;
     my $raw = <$f>;
-    close $f;
+    close $f or return;
+    return unless $raw;
 
-    # Load image
-    my $image   = GD::Image->new( $raw );
-    return unless $image;
+    # Get MIME type
+    $mime //= $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
 
     # Count icon width and height
     my ($image_width, $image_height, $width, $height);
 
-    $image_width  = $width  = $image->width;
-    $image_height = $height = $image->height;
-    if($width <= $ICON_SIZE and $height <= $ICON_SIZE)
+    if($mime->subType eq 'vnd.microsoft.icon')
     {
-        ;
-    }
-    elsif($width > $height)
-    {
-        $height = int( $ICON_SIZE * $height / $width || 1 );
-        $width  = $ICON_SIZE;
-    }
-    elsif($width < $height)
-    {
-        $width  = int( $ICON_SIZE * $width / $height || 1 );
-        $height = $ICON_SIZE;
+        # Show just small icons
+        return unless -s $path < $ICON_MAX_SIZE;
+        # Make as is BASE64 encoding for inline
+        $raw = MIME::Base64::encode_base64( $raw );
     }
     else
     {
-        $width  = $ICON_SIZE;
-        $height = $ICON_SIZE;
+        # Load image
+        my $image   = GD::Image->new( $raw );
+        return unless $image;
+
+        $image_width  = $width  = $image->width;
+        $image_height = $height = $image->height;
+        if($width <= $ICON_MAX_DIMENSION and $height <= $ICON_MAX_DIMENSION)
+        {
+            ;
+        }
+        elsif($width > $height)
+        {
+            $height = int( $ICON_MAX_DIMENSION * $height / $width || 1 );
+            $width  = $ICON_MAX_DIMENSION;
+        }
+        elsif($width < $height)
+        {
+            $width  = int( $ICON_MAX_DIMENSION * $width / $height || 1 );
+            $height = $ICON_MAX_DIMENSION;
+        }
+        else
+        {
+            $width  = $ICON_MAX_DIMENSION;
+            $height = $ICON_MAX_DIMENSION;
+        }
+
+        # Create icon image for all images. Very important to make icon
+        #  on specified background color for images with alpha channel.
+        my $icon = GD::Image->new( $width, $height, 1 );
+        return unless $icon;
+        # Fill white
+        $icon->fill(0, 0, $icon->colorAllocate( @ICON_BACKGROUND_COLOR ) );
+        # Copy and resize from original image
+        $icon->copyResampled($image, 0, 0, 0, 0,
+            $width, $height,
+            $image_width, $image_height
+        );
+
+        # Make BASE64 encoding for inline
+        $raw = MIME::Base64::encode_base64(
+            $icon->png( $ICON_COMPRESSION_LEVEL )
+        );
+
+        # Get mime type as icon type
+        $mime = $mime_png || $mime_unknown;
     }
-
-    # Create icon image for all images. Very important to make icon on specified
-    # background color for images with alpha channel.
-    my $icon = GD::Image->new( $width, $height, 1 );
-    return unless $icon;
-    # Fill white
-    $icon->fill(0, 0, $icon->colorAllocate( @ICON_BACKGROUND_COLOR ) );
-    # Copy and resize from original image
-    $icon->copyResampled($image, 0, 0, 0, 0,
-        $width, $height,
-        $image_width, $image_height
-    );
-
-    # Make BASE64 encoding for inline
-    $raw = MIME::Base64::encode_base64( $icon->png( $ICON_COMPRESSION_LEVEL ) );
-
-    # Get mime type as icon type
-    my $mime = $mime_png || $mime_unknown;
 
     return {
         raw     => $raw,
