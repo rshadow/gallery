@@ -316,7 +316,7 @@ sub show_index($)
             # Try to make icon
             unless( $icon )
             {
-                $icon = make_icon( $path, $mime, $r );
+                $icon = make_icon( $path, $mime );
                 # Try to save in cache
                 save_icon_in_cache( $path, $icon ) if $icon;
             }
@@ -471,9 +471,9 @@ Get $path of image and make icon for it
 
 =cut
 
-sub make_icon($;$$)
+sub make_icon($;$)
 {
-    my ($path, $mime, $r) = @_;
+    my ($path, $mime) = @_;
 
     # Get image
     open my $f, '<:raw', $path or return;
