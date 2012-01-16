@@ -1,4 +1,5 @@
-Gallery - perl module for nginx
+Gallery perl module for nginx. Like simple file index
+but thumbnail replace default icon for image.
 
 = DESCRIPTION
 
