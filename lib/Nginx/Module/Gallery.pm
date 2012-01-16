@@ -320,10 +320,10 @@ sub show_index($)
                 # Try to save in cache
                 save_icon_in_cache( $path, $icon ) if $icon;
             }
-            # Make generic image icon
+            # Make mime image icon
             unless( $icon )
             {
-                $icon = _icon_generic( $path );
+                $icon = _icon_mime( $path );
             }
 
             # Save icon and some image information
@@ -334,11 +334,11 @@ sub show_index($)
             $item{image}{height}    = $icon->{image}{height}
                 if defined $icon->{image}{height};
         }
-        # Show gemeric icon for file
+        # Show mime icon for file
         else
         {
-            # Load icon from cache
-            my $icon = _icon_generic( $path );
+            # Load mime icon
+            my $icon = _icon_mime( $path );
 
             # Save icon and some image information
             $item{icon}{raw}        = $icon->{raw};
@@ -614,13 +614,13 @@ sub _icon_common
     return $common{$name};
 }
 
-=head2 _icon_generic $path
+=head2 _icon_mime $path
 
-Return generic icon for file by $path
+Return mime icon for file by $path
 
 =cut
 
-sub _icon_generic
+sub _icon_mime
 {
     my ($path) = @_;
 
@@ -634,8 +634,8 @@ sub _icon_generic
     my $full    = join '-', $mime =~ m{^(.*?)/(.*)$};
 
     # Return icon if already loaded
-    our %generic;
-    return $generic{$str} if $generic{$str};
+    our %mime;
+    return $mime{$str} if $mime{$str};
 
     my @icon_path = (
         # Full MIME type
@@ -669,7 +669,7 @@ sub _icon_generic
         last;
     }
     # Try to load default icon for unknown type
-    return _icon_generic( MIME_UNKNOWN ) if ! $icon and $mime ne MIME_UNKNOWN;
+    return _icon_mime( MIME_UNKNOWN ) if ! $icon and $mime ne MIME_UNKNOWN;
     # Return unless icon =(
     return unless $icon;
 
@@ -677,13 +677,13 @@ sub _icon_generic
     $icon->saveAlpha(1);
 
     # Encode icon
-    $generic{$str}{raw}     =
+    $mime{$str}{raw}     =
         MIME::Base64::encode_base64( $icon->png( $ICON_COMPRESSION_LEVEL ) );
-    $generic{$str}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
-    $generic{$str}{width}   = $icon->width;
-    $generic{$str}{height}  = $icon->height;
+    $mime{$str}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
+    $mime{$str}{width}   = $icon->width;
+    $mime{$str}{height}  = $icon->height;
 
-    return $generic{$str};
+    return $mime{$str};
 }
 
 =head2 as_human_size(NUM)
