@@ -37,5 +37,4 @@ templates/item.html.ep
 templates/bottom.html.ep
 templates/top.html.ep
 README
-lib/MIME/Type.pm
 lib/Nginx/Module/Gallery.pm
