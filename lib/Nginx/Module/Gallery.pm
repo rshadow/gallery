@@ -506,7 +506,8 @@ sub make_icon($;$)
     {
         my $filepath = _escape_path $path;
 
-        my ($fh, $filename) = tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
+        my ($fh, $filename) =
+            tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
         system "/usr/bin/ffmpegthumbnailer" .
             " -i $filepath"                 .
             " -o $filename"                 .
