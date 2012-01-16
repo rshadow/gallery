@@ -123,7 +123,7 @@ use constant ICON_FAVICON   => 'emblem-photos';
 # MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
-use nginx;
+use nginx 1.1.11;
 
 use Mojo::Template;
 use MIME::Base64 qw(encode_base64);
@@ -749,9 +749,9 @@ sub _as_human_size($)
 
 =head1 AUTHORS
 
-Copyright (C) 2011 Dmitry E. Oboukhov <unera@debian.org>,
+Copyright (C) 2012 Dmitry E. Oboukhov <unera@debian.org>,
 
-Copyright (C) 2011 Roman V. Nikolaev <rshadow@rambler.ru>
+Copyright (C) 2012 Roman V. Nikolaev <rshadow@rambler.ru>
 
 =head1 LICENSE
 
