@@ -33,6 +33,7 @@ server {
 
     location / {
         perl  Nginx::Module::Gallery::handler;
+        # Change this path to you pictures folder
         root /home/rubin/Картинки;
     }
 }
