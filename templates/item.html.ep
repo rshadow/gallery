@@ -22,7 +22,7 @@
                 <%= $item->{filename} =%>
             </details>
         <% } =%>
-        <% if(defined $item->{image}{width} and defined $item->{image}{height} ) { =%>
+        <% if($item->{image}{width} and $item->{image}{height} ) { =%>
             <br/>
             <details class="extended wxh" open="open">
                 <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
