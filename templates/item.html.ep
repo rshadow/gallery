@@ -3,9 +3,9 @@
     <a href="<%= $item->{href} %>">
         <% if( defined $item->{icon} ) { =%>
             <img
-                <% if( exists $item->{image} ) { %>class="image" <% } %>
                 <% if( defined $item->{mime} ) { =%>
                     title="<%= "$item->{mime}" =%>"
+                    class="<%= $item->{mime}->mediaType =%>"
                 <% } =%>
                 <% if( defined $item->{width} ) { =%>
                     width="<%= $item->{width} =%>"

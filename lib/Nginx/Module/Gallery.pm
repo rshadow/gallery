@@ -70,11 +70,19 @@ our $ICON_MAX_SIZE          = 131072; # bytes
 
 =head2 ICON_COMPRESSION_LEVEL
 
-Icon comression level 0-9
+Icon comression level 0-9 for use in PNG
 
 =cut
 
 our $ICON_COMPRESSION_LEVEL = 9;
+
+=head2 ICON_QUALITY_LEVEL
+
+Icon quality level 0-9 for use in videos
+
+=cut
+
+our $ICON_QUALITY_LEVEL = 0;
 
 =head2 ICON_BACKGROUND_COLOR
 
@@ -131,6 +139,7 @@ use MIME::Types;
 use File::Spec;
 use File::Basename;
 use File::Path qw(make_path);
+use File::Temp qw(tempfile);
 use Digest::MD5 'md5_hex';
 use List::MoreUtils qw(any);
 
@@ -309,7 +318,7 @@ sub show_index($)
             delete $item{mime};
         }
         # For images make icons and get some information
-        elsif( $mime->mediaType eq 'image' )
+        elsif( $mime->mediaType eq 'image' or $mime->mediaType eq 'video' )
         {
             # Load icon from cache
             my $icon = get_icon_form_cache( $path );
@@ -475,30 +484,48 @@ sub make_icon($;$)
 {
     my ($path, $mime) = @_;
 
-    # Get image
-    open my $f, '<:raw', $path or return;
-    local $/;
-    my $raw = <$f>;
-    close $f or return;
-    return unless $raw;
-
     # Get MIME type
     $mime //= $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
 
     # Count icon width and height
-    my ($image_width, $image_height, $width, $height);
+    my ($raw, $image_width, $image_height, $width, $height);
 
     if($mime->subType eq 'vnd.microsoft.icon')
     {
         # Show just small icons
         return unless -s $path < $ICON_MAX_SIZE;
-        # Make as is BASE64 encoding for inline
-        $raw = MIME::Base64::encode_base64( $raw );
+
+        # Get image
+        open my $fh, '<:raw', $path or return;
+        local $/;
+        $raw = <$fh>;
+        close $fh or return;
+        return unless $raw;
+    }
+    elsif( $mime->mediaType eq 'video')
+    {
+        my $filepath = _escape_path $path;
+
+        my ($fh, $filename) = tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
+        system "/usr/bin/ffmpegthumbnailer" .
+            " -i $filepath"                 .
+            " -o $filename"                 .
+            " -s $ICON_MAX_DIMENSION"       .
+            " -q $ICON_QUALITY_LEVEL";
+        return unless $fh;
+
+        # Get image
+        local $/;
+        $raw = <$fh>;
+        close $fh or return;
+        return unless $raw;
+
+        $mime = $mime_png || $mime_unknown;
     }
     else
     {
         # Load image
-        my $image   = GD::Image->new( $raw );
+        my $image   = GD::Image->new( $path );
         return unless $image;
 
         $image_width  = $width  = $image->width;
@@ -536,13 +563,14 @@ sub make_icon($;$)
         );
 
         # Make BASE64 encoding for inline
-        $raw = MIME::Base64::encode_base64(
-            $icon->png( $ICON_COMPRESSION_LEVEL )
-        );
+        $raw = $icon->png( $ICON_COMPRESSION_LEVEL );
 
         # Get mime type as icon type
         $mime = $mime_png || $mime_unknown;
     }
+
+    # Make as is BASE64 encoding for inline
+    $raw = MIME::Base64::encode_base64( $raw );
 
     return {
         raw     => $raw,
