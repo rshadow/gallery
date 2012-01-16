@@ -12,7 +12,7 @@ use utf8;
 use open qw(:std :utf8);
 use lib qw(lib ../lib);
 
-use Test::More tests        => 33;
+use Test::More tests        => 108;
 use Encode                  qw(encode_utf8 decode_utf8);
 use File::Basename          qw(dirname basename);
 use File::Spec::Functions   qw(catfile rel2abs);
@@ -41,6 +41,15 @@ BEGIN {
 # TEST
 ################################################################################
 
+note 'Human values';
+for my $size (qw(0 1 1000 1000000 1000000000))
+{
+    my $str = Nginx::Module::Gallery::_as_human_size $size;
+    ($size)
+        ? ok $str =~ m/^\d+\w+$/, "$size => $str"
+        : ok $str == 0, "$size => $str";
+}
+
 note 'Common icons tests';
 my $common_icon_path = catfile rel2abs(dirname __FILE__), '../icons/*.png';
 for my $path (glob $common_icon_path)
@@ -52,6 +61,21 @@ for my $path (glob $common_icon_path)
         Nginx::Module::Gallery::_icon_common( $value )
     );
 }
+
+note 'Mime icons tests';
+my $mime_icon_path = catfile rel2abs(dirname __FILE__), '../icons/mime/*.png';
+for my $path (glob $mime_icon_path)
+{
+    my $filename    = basename($path);
+    my $value       = basename($path, '.png');
+
+    _test_icon_params( $value =>
+        Nginx::Module::Gallery::_icon_mime( $value )
+    );
+}
+note 'Escape';
+my $escaped = Nginx::Module::Gallery::_escape_path('/tmp/"ddd./');
+ok !($escaped =~ m/[^\\][.'"]/), 'Path escaped';
 
 note 'Cache images tests';
 my $data_path = catfile rel2abs(dirname __FILE__), 'data/*.png';
@@ -78,6 +102,20 @@ for my $path (glob $data_path)
     }
 }
 
+note 'Templates';
+my $template_path = catfile rel2abs(dirname __FILE__), '../templates/*.html.ep';
+for my $path (glob $template_path)
+{
+    my $name = basename($path, '.html.ep');
+    my $template = Nginx::Module::Gallery::_template $name;
+
+    ok length $template, "$name loaded";
+}
+
+my $css_path = catfile rel2abs(dirname __FILE__), '../templates/main.css';
+ok ((-f $css_path and ! -z _), 'CSS file exists');
+
+
 sub _test_icon_params
 {
     my ($name, $icon) = @_;
@@ -91,5 +129,6 @@ sub _test_icon_params
 #                                    $icon->{height};
 
     my $size = length $icon->{raw};
-    ok $size < 16384,           sprintf '%s image < 16Kb: %s', $name, $size;
+    ok $size < 16384,           sprintf '%s image < 16Kb: %s bytes',
+                                $name, $size;
 }
