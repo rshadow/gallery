@@ -124,11 +124,15 @@ our $VIDEO_THUMBNAILER = '/usr/bin/ffmpegthumbnailer' .
 
 our $IMAGE_THUMBNAILER = '/usr/bin/convert' .
     " %s" .
+    " -quiet" .
     " -auto-orient" .
     " -quality $ICON_COMPRESSION_LEVEL" .
+#    " -unsharp 0x.5" .
     " -thumbnail '$ICON_MAX_DIMENSION".'x'."$ICON_MAX_DIMENSION>'" .
     " -delete 1--1" .
     " %s";
+
+our $IMAGE_PARAMS = '/usr/bin/identify -format "%%wx%%h %%b" %s';
 
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
@@ -326,6 +330,9 @@ sub show_index($)
         # For images make icons and get some information
         elsif( $mime->mediaType eq 'image' or $mime->mediaType eq 'video' )
         {
+            # Has thumbnail
+            $item{icon}{thumb}      = 1;
+
             # Load icon from cache
             my $icon = get_icon_form_cache( $path );
             # Try to make icon
@@ -339,6 +346,8 @@ sub show_index($)
             unless( $icon )
             {
                 $icon = _icon_mime( $path );
+                # Can`t create/load thumbnail
+                delete $item{icon}{thumb};
             }
 
             # Save icon and some image information
@@ -494,7 +503,7 @@ sub make_icon($;$$)
     $mime //= $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
 
     # Count icon width and height
-    my ($raw, $image_width, $image_height, $width, $height);
+    my ($raw, $image_width, $image_height, $image_size);
 
     if($mime->subType eq 'vnd.microsoft.icon')
     {
@@ -530,6 +539,12 @@ sub make_icon($;$$)
     {
         my $filepath = _escape_path $path;
 
+        # Get image params
+        my $exec = sprintf $IMAGE_PARAMS, $filepath;
+        my $params = `$exec`;
+        ($image_width, $image_height, $image_size) =
+            $params =~ m/^(\d+)x(\d+) (\d+)$/;
+
         # Convert to temp thumbnail file
         my ($fh, $filename) =
             tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
@@ -552,11 +567,10 @@ sub make_icon($;$$)
     return {
         raw     => $raw,
         mime    => $mime,
-        width   => $width,
-        height  => $height,
         image   => {
             width   => $image_width,
             height  => $image_height,
+            size    => $image_size,
         },
     };
 }

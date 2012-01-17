@@ -8,7 +8,7 @@
                     <%
                         my @class = ();
                         push @class, $item->{mime}->mediaType;
-                        push @class, 'thumb' if $item->{image};
+                        push @class, 'thumb' if $item->{icon}{thumb};
                     %>
                     class="<%= join ' ', @class =%>"
                 <% } =%>
