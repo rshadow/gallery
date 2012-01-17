@@ -32,9 +32,11 @@ BEGIN {
     use_ok 'Nginx::Module::Gallery';
 
     require_ok 'Digest::MD5';
-    require_ok 'GD';
     require_ok 'Mojo::Template';
     require_ok 'MIME::Base64';
+    require_ok 'MIME::Types';
+    require_ok 'File::Path';
+
 }
 
 ################################################################################

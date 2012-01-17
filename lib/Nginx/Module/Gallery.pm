@@ -173,10 +173,6 @@ use File::Temp qw(tempfile);
 use Digest::MD5 'md5_hex';
 use List::MoreUtils qw(any);
 
-use GD;
-# Enable truecolor
-GD::Image->trueColor(1);
-
 # MIME definition objects
 our $mimetypes = MIME::Types->new;
 our $mime_unknown   = MIME::Type->new(
@@ -637,18 +633,18 @@ sub _icon_common
     my $icon_path = File::Spec->catfile($ICONS_PATH, $name.'.png');
 
     # Load icon
-    my $icon = GD::Image->new( $icon_path );
-    return unless $icon;
+    open my $fh, '<:raw', $icon_path or return;
+    local $/;
+    my $raw = <$fh>;
+    close $fh or return;
+    return unless $raw;
 
-    # Save alpha channel
-    $icon->saveAlpha(1);
+    # Make as is BASE64 encoding for inline
+    $raw = MIME::Base64::encode_base64( $raw );
 
     # Encode icon
-    $common{$name}{raw}     =
-        MIME::Base64::encode_base64( $icon->png( $ICON_COMPRESSION_LEVEL ) );
+    $common{$name}{raw}     = $raw;
     $common{$name}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
-    $common{$name}{width}   = $icon->width;
-    $common{$name}{height}  = $icon->height;
 
     return $common{$name};
 }
@@ -692,35 +688,34 @@ sub _icon_mime
     );
 
     # Load icon from varios paths
-    my ($icon, $icon_path);
+    my ($raw, $icon_path);
     for my $search_path ( @icon_path )
     {
         # Skip if file not exists
         next unless -f $search_path;
 
-        # Skip if can`t load image
-        my $try = GD::Image->new( $search_path );
-        next unless $try;
+        # Load icon
+        open my $fh, '<:raw', $search_path or next;
+        local $/;
+        $raw = <$fh>;
+        close $fh or next;
+        next unless $raw;
 
         # Save icon and stop search
-        $icon      = $try;
         $icon_path = $search_path;
         last;
     }
     # Try to load default icon for unknown type
-    return _icon_mime( MIME_UNKNOWN ) if ! $icon and $mime ne MIME_UNKNOWN;
+    return _icon_mime( MIME_UNKNOWN ) if ! $raw and $mime ne MIME_UNKNOWN;
     # Return unless icon =(
-    return unless $icon;
+    return unless $raw;
 
-    # Save alpha channel
-    $icon->saveAlpha(1);
+    # Make as is BASE64 encoding for inline
+    $raw = MIME::Base64::encode_base64( $raw );
 
     # Encode icon
-    $mime{$str}{raw}     =
-        MIME::Base64::encode_base64( $icon->png( $ICON_COMPRESSION_LEVEL ) );
+    $mime{$str}{raw}     = $raw;
     $mime{$str}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
-    $mime{$str}{width}   = $icon->width;
-    $mime{$str}{height}  = $icon->height;
 
     return $mime{$str};
 }
