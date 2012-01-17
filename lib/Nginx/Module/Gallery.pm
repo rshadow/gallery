@@ -50,7 +50,7 @@ All icons cached on first request. Next show will be more fast.
 =cut
 
 # Module version
-our $VERSION = 0.2.0;
+our $VERSION = 0.2.1;
 
 =head2 ICON_MAX_DIMENSION
 
@@ -559,7 +559,7 @@ sub make_icon($;$$)
         my $exec = sprintf $IMAGE_PARAMS, $filepath;
         my $params = `$exec`;
         ($image_width, $image_height, $image_size) =
-            $params =~ m/^(\d+)x(\d+) (\d+)$/;
+            $params =~ m/^(\d+)x(\d+)\s+(\d+)[a-zA-Z]+\s*$/;
 
         # Convert to temp thumbnail file
         my ($fh, $filename) =

@@ -1,3 +1,6 @@
+0.2.1
+    Fix get image demensions
+
 0.2.0
     Migrate from GD to ImageMagick for images.
     Add FFMpegThumbnailer for video
