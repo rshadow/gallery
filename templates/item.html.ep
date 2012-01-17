@@ -5,7 +5,12 @@
             <img
                 <% if( defined $item->{mime} ) { =%>
                     title="<%= "$item->{mime}" =%>"
-                    class="<%= $item->{mime}->mediaType =%>"
+                    <%
+                        my @class = ();
+                        push @class, $item->{mime}->mediaType;
+                        push @class, 'thumb' if $item->{image};
+                    %>
+                    class="<%= join ' ', @class =%>"
                 <% } =%>
                 <% if( defined $item->{width} ) { =%>
                     width="<%= $item->{width} =%>"

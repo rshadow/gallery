@@ -34,11 +34,7 @@ details.extended {
     min-width: 85px;
     padding: 2px;
 }
-img.image {
+img.thumb {
     box-shadow: 0px 0px 3px 2px rgba(0,0,0,0.9);
-    border: none;
-}
-img.video {
-    box-shadow: 0px 0px 3px 2px rgba(0,0,255,0.9);
-    border: none;
+    border: 1px solid #fff;
 }
