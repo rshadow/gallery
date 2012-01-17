@@ -67,4 +67,4 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 On Debian/Ubuntu systems you need install packages:
  libmojolicious-perl, libmime-types-perl, libfile-path-perl, libgd2-xpm,
- ffmpegthumbnailer
+ ffmpegthumbnailer, imagemagick

@@ -84,14 +84,6 @@ Icon quality level 0-9 for use in videos
 
 our $ICON_QUALITY_LEVEL = 0;
 
-=head2 ICON_BACKGROUND_COLOR
-
-Icon background color (R, G, B)
-
-=cut
-
-our @ICON_BACKGROUND_COLOR = (255, 255, 255);
-
 =head2 CACHE_PATH
 
 Path for thumbnails cache
@@ -123,6 +115,20 @@ Path for MIME and other icons
 =cut
 
 our $ICONS_PATH     = '/home/rubin/workspace/gallery/icons';
+
+our $VIDEO_THUMBNAILER = '/usr/bin/ffmpegthumbnailer' .
+    " -i %s" .
+    " -o %s" .
+    " -s $ICON_MAX_DIMENSION" .
+    " -q $ICON_QUALITY_LEVEL";
+
+our $IMAGE_THUMBNAILER = '/usr/bin/convert' .
+    " %s" .
+    " -auto-orient" .
+    " -quality $ICON_COMPRESSION_LEVEL" .
+    " -thumbnail '$ICON_MAX_DIMENSION".'x'."$ICON_MAX_DIMENSION>'" .
+    " -delete 1--1" .
+    " %s";
 
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
@@ -325,7 +331,7 @@ sub show_index($)
             # Try to make icon
             unless( $icon )
             {
-                $icon = make_icon( $path, $mime );
+                $icon = make_icon( $path, $mime, $r );
                 # Try to save in cache
                 save_icon_in_cache( $path, $icon ) if $icon;
             }
@@ -480,9 +486,9 @@ Get $path of image and make icon for it
 
 =cut
 
-sub make_icon($;$)
+sub make_icon($;$$)
 {
-    my ($path, $mime) = @_;
+    my ($path, $mime, $r) = @_;
 
     # Get MIME type
     $mime //= $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
@@ -506,13 +512,10 @@ sub make_icon($;$)
     {
         my $filepath = _escape_path $path;
 
+        # Convert to temp thumbnail file
         my ($fh, $filename) =
             tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
-        system "/usr/bin/ffmpegthumbnailer" .
-            " -i $filepath"                 .
-            " -o $filename"                 .
-            " -s $ICON_MAX_DIMENSION"       .
-            " -q $ICON_QUALITY_LEVEL";
+        system( sprintf $VIDEO_THUMBNAILER, $filepath, $filename );
         return unless $fh;
 
         # Get image
@@ -525,46 +528,19 @@ sub make_icon($;$)
     }
     else
     {
-        # Load image
-        my $image   = GD::Image->new( $path );
-        return unless $image;
+        my $filepath = _escape_path $path;
 
-        $image_width  = $width  = $image->width;
-        $image_height = $height = $image->height;
-        if($width <= $ICON_MAX_DIMENSION and $height <= $ICON_MAX_DIMENSION)
-        {
-            ;
-        }
-        elsif($width > $height)
-        {
-            $height = int( $ICON_MAX_DIMENSION * $height / $width || 1 );
-            $width  = $ICON_MAX_DIMENSION;
-        }
-        elsif($width < $height)
-        {
-            $width  = int( $ICON_MAX_DIMENSION * $width / $height || 1 );
-            $height = $ICON_MAX_DIMENSION;
-        }
-        else
-        {
-            $width  = $ICON_MAX_DIMENSION;
-            $height = $ICON_MAX_DIMENSION;
-        }
+        # Convert to temp thumbnail file
+        my ($fh, $filename) =
+            tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
+        system( sprintf $IMAGE_THUMBNAILER, $filepath, $filename );
+        return unless $fh;
 
-        # Create icon image for all images. Very important to make icon
-        #  on specified background color for images with alpha channel.
-        my $icon = GD::Image->new( $width, $height, 1 );
-        return unless $icon;
-        # Fill white
-        $icon->fill(0, 0, $icon->colorAllocate( @ICON_BACKGROUND_COLOR ) );
-        # Copy and resize from original image
-        $icon->copyResampled($image, 0, 0, 0, 0,
-            $width, $height,
-            $image_width, $image_height
-        );
-
-        # Make BASE64 encoding for inline
-        $raw = $icon->png( $ICON_COMPRESSION_LEVEL );
+        # Get image
+        local $/;
+        $raw = <$fh>;
+        close $fh or return;
+        return unless $raw;
 
         # Get mime type as icon type
         $mime = $mime_png || $mime_unknown;
