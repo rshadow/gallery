@@ -50,7 +50,7 @@ All icons cached on first request. Next show will be more fast.
 =cut
 
 # Module version
-our $VERSION = 0.1.1;
+our $VERSION = 0.2.0;
 
 =head2 ICON_MAX_DIMENSION
 
