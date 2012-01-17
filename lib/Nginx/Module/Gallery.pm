@@ -116,11 +116,25 @@ Path for MIME and other icons
 
 our $ICONS_PATH     = '/home/rubin/workspace/gallery/icons';
 
+=head2 VIDEO_THUMBNAILER
+
+Video thumbnailer command for sprintf. First %s - onput file path, second %s
+ - output file path.
+
+=cut
+
 our $VIDEO_THUMBNAILER = '/usr/bin/ffmpegthumbnailer' .
     " -i %s" .
     " -o %s" .
     " -s $ICON_MAX_DIMENSION" .
     " -q $ICON_QUALITY_LEVEL";
+
+=head2 IMAGE_THUMBNAILER
+
+Image thumbnailer command for sprintf. First %s - onput file path, second %s
+ - output file path.
+
+=cut
 
 our $IMAGE_THUMBNAILER = '/usr/bin/convert' .
     " %s" .
@@ -131,6 +145,12 @@ our $IMAGE_THUMBNAILER = '/usr/bin/convert' .
     " -thumbnail '$ICON_MAX_DIMENSION".'x'."$ICON_MAX_DIMENSION>'" .
     " -delete 1--1" .
     " %s";
+
+=head2 IMAGE_PARAMS
+
+Command for get image params like width, height, etc.
+
+=cut
 
 our $IMAGE_PARAMS = '/usr/bin/identify -format "%%wx%%h %%b" %s';
 
