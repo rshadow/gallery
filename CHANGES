@@ -1,0 +1,6 @@
+0.1.1
+    Migrate from GD to ImageMagick for images.
+    Add FFMpegThumbnailer for video
+
+0.01
+    The first public version.
