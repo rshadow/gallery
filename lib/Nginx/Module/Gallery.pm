@@ -559,7 +559,7 @@ sub make_icon($;$$)
         my $exec = sprintf $IMAGE_PARAMS, $filepath;
         my $params = `$exec`;
         ($image_width, $image_height, $image_size) =
-            $params =~ m/^(\d+)x(\d+)\s+(\d+)[a-zA-Z]+\s*$/;
+            $params =~ m/^(\d+)x(\d+)\s+(\d+)[a-zA-Z]*\s*$/;
 
         # Convert to temp thumbnail file
         my ($fh, $filename) =
