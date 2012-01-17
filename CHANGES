@@ -1,9 +1,12 @@
-0.2.1
+0.2.2 (17.01.2012)
+    Fix imagemagick 3/4 changes
+
+0.2.1 (17.01.2012)
     Fix get image demensions
 
-0.2.0
+0.2.0 (17.01.2012)
     Migrate from GD to ImageMagick for images.
     Add FFMpegThumbnailer for video
 
-0.01
+0.01 (10.01.2012)
     The first public version.
