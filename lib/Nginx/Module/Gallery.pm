@@ -139,6 +139,7 @@ Image thumbnailer command for sprintf. First %s - onput file path, second %s
 our $IMAGE_THUMBNAILER = '/usr/bin/convert' .
     " %s" .
     " -quiet" .
+    " -strip" .
     " -auto-orient" .
     " -quality $ICON_COMPRESSION_LEVEL" .
 #    " -unsharp 0x.5" .
