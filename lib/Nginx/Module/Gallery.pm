@@ -74,7 +74,7 @@ Icon comression level 0-9 for use in PNG
 
 =cut
 
-our $ICON_COMPRESSION_LEVEL = 9;
+our $ICON_COMPRESSION_LEVEL = 95;
 
 =head2 ICON_QUALITY_LEVEL
 
@@ -115,47 +115,6 @@ Path for MIME and other icons
 =cut
 
 our $ICONS_PATH     = '/home/rubin/workspace/gallery/icons';
-
-=head2 VIDEO_THUMBNAILER
-
-Video thumbnailer command for sprintf. First %s - onput file path, second %s
- - output file path.
-
-=cut
-
-our $VIDEO_THUMBNAILER = '/usr/bin/ffmpegthumbnailer' .
-    " -i %s" .
-    " -o %s" .
-    " -s $ICON_MAX_DIMENSION" .
-    " -q $ICON_QUALITY_LEVEL";
-
-=head2 IMAGE_THUMBNAILER
-
-Image thumbnailer command for sprintf. First %s - onput file path, second %s
- - output file path.
-
-=cut
-
-our $IMAGE_THUMBNAILER = '/usr/bin/convert' .
-    " -quiet" .
-    " -strip" .
-    " -delete 1--1" .
-    # convert on read for minimum memory usage
-    " %s'[$ICON_MAX_DIMENSION".'x'."$ICON_MAX_DIMENSION>]'" .
-    " -auto-orient" .
-    " -quality $ICON_COMPRESSION_LEVEL" .
-#    " -unsharp 0x.5" .
-    " -thumbnail '$ICON_MAX_DIMENSION".'x'."$ICON_MAX_DIMENSION>'" .
-    " -colorspace RGB" .
-    " %s";
-
-=head2 IMAGE_PARAMS
-
-Command for get image params like width, height, etc.
-
-=cut
-
-our $IMAGE_PARAMS = '/usr/bin/identify -format "%%wx%%h %%b" %s';
 
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
@@ -420,7 +379,7 @@ sub _escape_path($)
 {
     my ($path) = @_;
     my $escaped = $path;
-    $escaped =~ s{([\s'".?*])}{\\$1}g;
+    $escaped =~ s{([\s'".?*\(\)\+])}{\\$1}g;
     return $escaped;
 }
 
@@ -538,13 +497,20 @@ sub make_icon($;$$)
     }
     elsif( $mime->mediaType eq 'video')
     {
-        my $filepath = _escape_path $path;
+        # Full file read
+        local $/;
 
         # Convert to temp thumbnail file
         my ($fh, $filename) =
             tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
-        system( sprintf $VIDEO_THUMBNAILER, $filepath, $filename );
         return unless $fh;
+
+        system '/usr/bin/ffmpegthumbnailer',
+            '-s', $ICON_MAX_DIMENSION,
+            '-q', $ICON_QUALITY_LEVEL,
+#            '-f',
+            '-i', $path,
+            '-o', $filename;
 
         # Get image
         local $/;
@@ -556,24 +522,33 @@ sub make_icon($;$$)
     }
     else
     {
-        my $filepath = _escape_path $path;
+        # Full file read
+        local $/;
 
         # Get image params
-        my $exec = sprintf $IMAGE_PARAMS, $filepath;
-        my $params = `$exec`;
+        open my $pipe1, '-|:utf8',
+            '/usr/bin/identify',
+            '-format', '%wx%h %b',
+            $path;
+        my $params = <$pipe1>;
+        close $pipe1;
+
         ($image_width, $image_height, $image_size) =
             $params =~ m/^(\d+)x(\d+)\s+(\d+)[a-zA-Z]*\s*$/;
 
-        # Convert to temp thumbnail file
-        my ($fh, $filename) =
-            tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
-        system( sprintf $IMAGE_THUMBNAILER, $filepath, $filename );
-        return unless $fh;
-
-        # Get image
-        local $/;
-        $raw = <$fh>;
-        close $fh or return;
+        open my $pipe2, '-|:raw',
+            '/usr/bin/convert',
+            '-quiet',
+            '-strip',
+            '-delete', '1--1',
+            $path,
+            '-auto-orient',
+            '-quality', $ICON_COMPRESSION_LEVEL,
+            '-thumbnail', $ICON_MAX_DIMENSION.'x'.$ICON_MAX_DIMENSION.'>',
+            '-colorspace', 'RGB',
+            '-';
+        $raw = <$pipe2>;
+        close $pipe2;
         return unless $raw;
 
         # Get mime type as icon type
