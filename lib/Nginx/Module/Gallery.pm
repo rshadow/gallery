@@ -137,14 +137,16 @@ Image thumbnailer command for sprintf. First %s - onput file path, second %s
 =cut
 
 our $IMAGE_THUMBNAILER = '/usr/bin/convert' .
-    " %s" .
     " -quiet" .
     " -strip" .
+    " -delete 1--1" .
+    # convert on read for minimum memory usage
+    " %s'[$ICON_MAX_DIMENSION".'x'."$ICON_MAX_DIMENSION>]'" .
     " -auto-orient" .
     " -quality $ICON_COMPRESSION_LEVEL" .
 #    " -unsharp 0x.5" .
     " -thumbnail '$ICON_MAX_DIMENSION".'x'."$ICON_MAX_DIMENSION>'" .
-    " -delete 1--1" .
+    " -colorspace RGB" .
     " %s";
 
 =head2 IMAGE_PARAMS
