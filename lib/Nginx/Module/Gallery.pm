@@ -132,6 +132,7 @@ use File::Spec;
 use File::Basename;
 use File::Path qw(make_path);
 use File::Temp qw(tempfile);
+use File::Find;
 use Digest::MD5 'md5_hex';
 use List::MoreUtils qw(any);
 
@@ -272,7 +273,7 @@ sub show_index($)
     }
 
     # Get directory index
-    my $mask  = '"' . File::Spec->catfile( $r->filename, '*' ) . '"';
+    my $mask  = File::Spec->catfile( _escape_path($r->filename), '*' );
     my @index = sort {-d $b cmp -d $a} sort {uc $a cmp uc $b} glob $mask;
 
     # Create index
@@ -383,11 +384,9 @@ sub get_icon_form_cache($)
     my ($filename, $dir) = File::Basename::fileparse($path);
 
     # Find icon
-    my $mask =
-        '"' .
-        File::Spec->catfile( File::Spec->catdir($CACHE_PATH, $dir),
-            sprintf( '%s.*.base64', _get_md5_image( $path ) ) .
-        '"'
+    my $mask = File::Spec->catfile(
+        _escape_path( File::Spec->catdir($CACHE_PATH, $dir) ),
+        sprintf( '%s.*.base64', _get_md5_image( $path ) )
     );
     my ($cache_path) = glob $mask;
 
@@ -744,6 +743,20 @@ sub _as_human_size($)
     return ($result{digit}, $result{letter}, $result{byte}, $result{human})
         if wantarray;
     return $result{human};
+}
+
+=head2 _escape_path $path
+
+Return escaped $path
+
+=cut
+
+sub _escape_path($)
+{
+    my ($path) = @_;
+    my $escaped = $path;
+    $escaped =~ s{([\s'".?*\(\)\+\}\{\]\[])}{\\$1}g;
+    return $escaped;
 }
 
 1;
