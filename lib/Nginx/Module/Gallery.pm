@@ -255,8 +255,8 @@ sub show_index($)
         # make link on updir
         my @updir = File::Spec->splitdir( $r->uri );
         pop @updir;
+        $_ = uri_escape $_ for @updir;
         my $updir = File::Spec->catdir( @updir );
-        undef @updir;
 
         my $icon = _icon_common( ICON_UPDIR );
 
@@ -264,7 +264,7 @@ sub show_index($)
         my %item = (
             path        => File::Spec->updir,
             filename    => File::Spec->updir,
-            href        => uri_escape( $updir ),
+            href        => $updir,
             icon        => {
                 raw     => $icon->{raw},
                 mime    => $icon->{mime},
@@ -285,13 +285,17 @@ sub show_index($)
         my ($filename, $dir) = File::Basename::fileparse($path);
         my ($digit, $letter, $bytes, $human) = _as_human_size( -s $path );
         my $mime = $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
-        my $href = File::Spec->catfile( $r->uri, $filename);
+
+        my @href = File::Spec->splitdir( $r->uri );
+        push @href, $filename;
+        $_ = uri_escape $_ for @href;
+        my $href = File::Spec->catfile( @href );
 
         # Make item info hash
         my %item = (
             path        => $path,
             filename    => $filename,
-            href        => uri_escape( $href ),
+            href        => $href,
             size        => $human,
             mime        => $mime,
         );
