@@ -1,6 +1,6 @@
 % my ($item) = @_;
 <div class="item">
-    <a href="<%= $item->{href} %>">
+    <a href="<%= $item->{href} =%>">
         <% if( defined $item->{icon} ) { =%>
             <img
                 <% if( defined $item->{mime} ) { =%>
