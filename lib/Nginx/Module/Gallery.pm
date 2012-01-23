@@ -230,14 +230,14 @@ sub show_index($)
     our %icon;
 
     # Make title from path
-    my @tpath = split m{/}, $r->uri;
+    my @tpath =  File::Spec->splitdir( $r->uri );
     shift @tpath;
     push @tpath, '/' unless @tpath;
     my $title = 'Gallery - ' . join ' : ', @tpath;
     undef @tpath;
 
     # Send top of index page
-    $r->send_http_header("text/html");
+    $r->send_http_header("text/html; charset=utf-8");
     $r->print(
         $mt->render(
             _template('top'),
@@ -272,7 +272,7 @@ sub show_index($)
     }
 
     # Get directory index
-    my $mask  = File::Spec->catfile( _escape_path( $r->filename ), '*' );
+    my $mask  = '"' . File::Spec->catfile( $r->filename, '*' ) . '"';
     my @index = sort {-d $b cmp -d $a} sort {uc $a cmp uc $b} glob $mask;
 
     # Create index
@@ -282,12 +282,13 @@ sub show_index($)
         my ($filename, $dir) = File::Basename::fileparse($path);
         my ($digit, $letter, $bytes, $human) = _as_human_size( -s $path );
         my $mime = $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
+        my $href = File::Spec->catfile( $r->uri, $filename);
 
         # Make item info hash
         my %item = (
             path        => $path,
             filename    => $filename,
-            href        => File::Spec->catfile($r->uri, $filename),
+            href        => $href,
             size        => $human,
             mime        => $mime,
         );
@@ -369,20 +370,6 @@ sub _get_md5_image($)
     return md5_hex join( ',', $path, $size, $mtime );
 }
 
-=head2 _escape_path $path
-
-Return escaped $path
-
-=cut
-
-sub _escape_path($)
-{
-    my ($path) = @_;
-    my $escaped = $path;
-    $escaped =~ s{([\s'".?*\(\)\+])}{\\$1}g;
-    return $escaped;
-}
-
 =head2 get_icon_form_cache $path
 
 Check icon for image by $path in cache and return it if exists
@@ -396,9 +383,11 @@ sub get_icon_form_cache($)
     my ($filename, $dir) = File::Basename::fileparse($path);
 
     # Find icon
-    my $mask = File::Spec->catfile(
-        _escape_path( File::Spec->catdir($CACHE_PATH, $dir) ),
-        sprintf( '%s.*.base64', _get_md5_image( $path ) )
+    my $mask =
+        '"' .
+        File::Spec->catfile( File::Spec->catdir($CACHE_PATH, $dir),
+            sprintf( '%s.*.base64', _get_md5_image( $path ) ) .
+        '"'
     );
     my ($cache_path) = glob $mask;
 
