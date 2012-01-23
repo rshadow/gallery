@@ -135,6 +135,7 @@ use File::Temp qw(tempfile);
 use File::Find;
 use Digest::MD5 'md5_hex';
 use List::MoreUtils qw(any);
+use URI::Escape qw(uri_escape);
 
 # MIME definition objects
 our $mimetypes = MIME::Types->new;
@@ -227,6 +228,7 @@ sub show_index($)
     # Templates
     our %template;
     my $mt = Mojo::Template->new;
+    $mt->encoding('UTF-8');
     # Mime type
     our %icon;
 
@@ -262,7 +264,7 @@ sub show_index($)
         my %item = (
             path        => File::Spec->updir,
             filename    => File::Spec->updir,
-            href        => $updir,
+            href        => uri_escape( $updir ),
             icon        => {
                 raw     => $icon->{raw},
                 mime    => $icon->{mime},
@@ -289,7 +291,7 @@ sub show_index($)
         my %item = (
             path        => $path,
             filename    => $filename,
-            href        => $href,
+            href        => uri_escape( $href ),
             size        => $human,
             mime        => $mime,
         );
