@@ -60,6 +60,8 @@ server {
     # Default: /var/cache/gallery
     set $CACHE_PATH             "/home/rubin/workspace/gallery/cache";
 
+    set $CACHE_PREFIX			"abdd1ac22dcd41208fb629d24a8ea018";
+
     # Mode for created thumbnails.
     # Default: 0755
     set $CACHE_MODE             0755;

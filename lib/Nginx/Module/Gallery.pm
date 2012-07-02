@@ -52,70 +52,7 @@ All icons cached on first request. Next show will be more fast.
 # Module version
 our $VERSION = 0.2.3;
 
-=head2 ICON_MAX_DIMENSION
-
-Max icon dimension. In pixels. All thumbnails well be resized to this dimension.
-Default: 100
-
-=cut
-
-our $ICON_MAX_DIMENSION = 100; # pixels
-
-=head2 ICON_MAX_SIZE
-
-Max icon size. In bytes. Default 128Kb.
-
-=cut
-
-our $ICON_MAX_SIZE = 131072; # bytes
-
-=head2 ICON_COMPRESSION_LEVEL
-
-Icon comression level 0-100 for use in PNG
-
-=cut
-
-our $ICON_COMPRESSION_LEVEL = 95;
-
-=head2 ICON_QUALITY_LEVEL
-
-Icon quality level 0-9 for use in videos
-
-=cut
-
-our $ICON_QUALITY_LEVEL = 0;
-
-=head2 CACHE_PATH
-
-Path for thumbnails cache. Default: /var/cache/gallery
-
-=cut
-
-our $CACHE_PATH = '/var/cache/gallery';
-
-=head2 CACHE_MODE
-
-Mode for created thumbnails. Default: 0755
-
-=cut
-
-our $CACHE_MODE = 0755;
-
-=head2 TEMPLATE_PATH
-
-Templates path. Default: /usr/local/gallery/templates
-
-=cut
-
-our $TEMPLATE_PATH = '/usr/local/gallery/templates';
-
-=head2 ICONS_PATH
-
-Path for MIME and other icons. Default: /usr/share/icons/gallery
-
-=cut
-
-our $ICONS_PATH = '/usr/share/icons/gallery';
+our %CONFIG;
 
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
@@ -143,7 +80,6 @@ use URI::Escape qw(uri_escape);
 # MIME definition objects
 our $mimetypes = MIME::Types->new;
 our $mime_unknown   = MIME::Type->new(
-    encoding    => 'base64',
     simplified  => 'unknown/unknown',
     type        => 'x-unknown/x-unknown'
 );
@@ -167,8 +103,7 @@ sub handler($)
     _get_variables($r);
 
     # Stop unless GET or HEAD
-    return HTTP_BAD_REQUEST
-        unless $r->request_method eq 'GET' or $r->request_method eq 'HEAD';
+    return HTTP_BAD_REQUEST unless grep {$r->request_method eq $_} qw{GET HEAD};
     # Stop unless dir
     return HTTP_NOT_FOUND unless -d $r->filename;
     # Stop if header only
@@ -211,9 +146,9 @@ sub show_index($)
     $r->print(
         $mt->render(
             _template('top'),
-            path    => $TEMPLATE_PATH,
+            path    => $CONFIG{TEMPLATE_PATH},
             title   => $title,
-            size    => $ICON_MAX_DIMENSION,
+            size    => $CONFIG{ICON_MAX_DIMENSION},
         )
     );
 
@@ -359,8 +294,8 @@ sub get_icon_form_cache($)
 
     # Find icon
     my $mask = File::Spec->catfile(
-        _escape_path( File::Spec->catdir($CACHE_PATH, $dir) ),
-        sprintf( '%s.*.base64', _get_md5_image( $path ) )
+        _escape_path( File::Spec->catdir($CONFIG{CACHE_PATH}, $dir) ),
+        sprintf( '%s.*', _get_md5_image( $path ) )
     );
     my ($cache_path) = glob $mask;
 
@@ -374,7 +309,7 @@ sub get_icon_form_cache($)
     close $f;
 
     my ($image_width, $image_height, $ext) =
-        $cache_path =~ m{^.*\.(\d+)x(\d+)\.(\w+)\.base64$}i;
+        $cache_path =~ m{^.*\.(\d+)x(\d+)\.(\w+)$}i;
 
     return {
         raw     => $raw,
@@ -401,9 +336,9 @@ sub save_icon_in_cache($$)
     # Create dirs
     my $error;
     make_path(
-        File::Spec->catdir($CACHE_PATH, $dir),
+        File::Spec->catdir($CONFIG{CACHE_PATH}, $dir),
         {
-            mode    => $CACHE_MODE,
+            mode    => $CONFIG{CACHE_MODE},
             error   => \$error,
         }
     );
@@ -411,9 +346,9 @@ sub save_icon_in_cache($$)
 
     # Make path
     my $cache = File::Spec->catfile(
-        $CACHE_PATH,
+        $CONFIG{CACHE_PATH},
         $dir,
-        sprintf( '%s.%dx%d.%s.base64',
+        sprintf( '%s.%dx%d.%s',
             _get_md5_image( $path ),
             $icon->{image}{width},
             $icon->{image}{height},
@@ -448,7 +383,7 @@ sub make_icon($;$$)
     if($mime->subType eq 'vnd.microsoft.icon')
     {
         # Show just small icons
-        return unless -s $path < $ICON_MAX_SIZE;
+        return unless -s $path < $CONFIG{ICON_MAX_SIZE};
 
         # Get image
         open my $fh, '<:raw', $path or return;
@@ -468,8 +403,8 @@ sub make_icon($;$$)
         return unless $fh;
 
         system '/usr/bin/ffmpegthumbnailer',
-            '-s', $ICON_MAX_DIMENSION,
-            '-q', $ICON_QUALITY_LEVEL,
+            '-s', $CONFIG{ICON_MAX_DIMENSION},
+            '-q', $CONFIG{ICON_QUALITY_LEVEL},
 #            '-f',
             '-i', $path,
             '-o', $filename;
@@ -505,8 +440,9 @@ sub make_icon($;$$)
             '-delete', '1--1',
             $path,
             '-auto-orient',
-            '-quality', $ICON_COMPRESSION_LEVEL,
-            '-thumbnail', $ICON_MAX_DIMENSION.'x'.$ICON_MAX_DIMENSION.'>',
+            '-quality', $CONFIG{ICON_COMPRESSION_LEVEL},
+            '-thumbnail',
+            $CONFIG{ICON_MAX_DIMENSION}.'x'.$CONFIG{ICON_MAX_DIMENSION}.'>',
             '-colorspace', 'RGB',
             '-';
         $raw = <$pipe2>;
@@ -516,9 +452,6 @@ sub make_icon($;$$)
         # Get mime type as icon type
         $mime = $mime_png || $mime_unknown;
     }
-
-    # Make as is BASE64 encoding for inline
-    $raw = MIME::Base64::encode_base64( $raw );
 
     return {
         raw     => $raw,
@@ -546,7 +479,7 @@ sub _template($)
     return $template{ $name } if $template{ $name };
 
     # Load template
-    my $path = File::Spec->catfile($TEMPLATE_PATH, $name.'.html.ep');
+    my $path = File::Spec->catfile($CONFIG{TEMPLATE_PATH}, $name.'.html.ep');
     open my $f, '<:utf8', $path or return;
     local $/;
     $template{ $name } = <$f>;
@@ -570,7 +503,7 @@ sub _icon_common
     return $common{$name} if $common{$name};
 
     # Get icon path
-    my $icon_path = File::Spec->catfile($ICONS_PATH, $name.'.png');
+    my $icon_path = File::Spec->catfile($CONFIG{ICONS_PATH}, $name.'.png');
 
     # Load icon
     open my $fh, '<:raw', $icon_path or return;
@@ -614,16 +547,16 @@ sub _icon_mime
 
     my @icon_path = (
         # Full MIME type
-        File::Spec->catfile($ICONS_PATH, 'mime',
+        File::Spec->catfile($CONFIG{ICONS_PATH}, 'mime',
             sprintf( '%s-%s.png', $media, $sub ) ),
         # MIME::Type bug subType is empty =(
-        File::Spec->catfile($ICONS_PATH, 'mime',
+        File::Spec->catfile($CONFIG{ICONS_PATH}, 'mime',
             sprintf( '%s.png', $full ) ),
         # Common by media type
-        File::Spec->catfile($ICONS_PATH, 'mime',
+        File::Spec->catfile($CONFIG{ICONS_PATH}, 'mime',
             sprintf( '%s.png', $media ) ),
         # By file extension
-        File::Spec->catfile($ICONS_PATH, 'mime',
+        File::Spec->catfile($CONFIG{ICONS_PATH}, 'mime',
             sprintf( '%s.png', $extension ) ),
     );
 
@@ -743,23 +676,10 @@ sub _get_variables
 {
     my ($r) = @_;
 
-    $ICON_MAX_DIMENSION = $r->variable('ICON_MAX_DIMENSION')
-        if $r->variable('ICON_MAX_DIMENSION');
-    $ICON_MAX_SIZE = $r->variable('ICON_MAX_SIZE')
-        if $r->variable('ICON_MAX_SIZE');
-    $ICON_COMPRESSION_LEVEL = $r->variable('ICON_COMPRESSION_LEVEL')
-        if $r->variable('ICON_COMPRESSION_LEVEL');
-    $ICON_QUALITY_LEVEL = $r->variable('ICON_QUALITY_LEVEL')
-        if $r->variable('ICON_QUALITY_LEVEL');
-    $CACHE_PATH = $r->variable('CACHE_PATH')
-        if $r->variable('CACHE_PATH');
-    $CACHE_MODE = $r->variable('CACHE_MODE')
-        if $r->variable('CACHE_MODE');
-    $TEMPLATE_PATH = $r->variable('TEMPLATE_PATH')
-        if $r->variable('TEMPLATE_PATH');
-    $ICONS_PATH = $r->variable('ICONS_PATH')
-        if $r->variable('ICONS_PATH');
-
+    $CONFIG{$_} //= $r->variable( $_ )
+        for qw(ICON_MAX_DIMENSION   ICON_MAX_SIZE   ICON_COMPRESSION_LEVEL
+               ICON_QUALITY_LEVEL   CACHE_PATH      CACHE_MODE
+               TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX);
     return 1;
 }
 
