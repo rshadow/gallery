@@ -33,8 +33,9 @@ server {
 
     location / {
         perl  Nginx::Module::Gallery::handler;
+
         # Change this path to you pictures folder
-        root /home/rubin/workspace/gallery/t/data;
+        root /usr/share/images;
 
         # Max icon dimension. In pixels. All thumbnails well be resized to
         # this dimension.
