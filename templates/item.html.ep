@@ -1,4 +1,5 @@
-% my ($item) = @_;
+% my (%opts) = @_;
+% my $item = $opts{item};
 <div class="item">
     <a href="<%= $item->{href} =%>">
         <% if( defined $item->{icon} ) { =%>

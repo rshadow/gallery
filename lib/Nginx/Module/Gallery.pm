@@ -250,9 +250,9 @@ sub show_index($)
     $r->print(
         $mt->render(
             _template('top'),
-            $TEMPLATE_PATH,
-            $title,
-            $ICON_MAX_DIMENSION
+            path    => $TEMPLATE_PATH,
+            title   => $title,
+            size    => $ICON_MAX_DIMENSION,
         )
     );
 
@@ -278,7 +278,7 @@ sub show_index($)
             },
         );
 
-        $r->print( $mt->render( _template('item'), \%item ) );
+        $r->print( $mt->render( _template('item'), item => \%item ) );
     }
 
     # Get directory index
@@ -362,7 +362,7 @@ sub show_index($)
             $item{icon}{mime}       = $icon->{mime};
         }
 
-        $r->print( $mt->render( _template('item'), \%item ) );
+        $r->print( $mt->render( _template('item'), item => \%item ) );
     }
 
     # Send bottom of index page
