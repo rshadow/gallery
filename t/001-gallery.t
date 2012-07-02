@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-=head1 000-gallery.t
+=head1 001-gallery.t
 
 Nginx::Module::Gallery
 
