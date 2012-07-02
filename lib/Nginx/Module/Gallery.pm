@@ -120,7 +120,7 @@ our $ICONS_PATH = '/usr/share/icons/gallery';
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
 use constant ICON_UPDIR     => 'edit-undo';
-use constant ICON_FAVICON   => 'emblem-photos';
+#use constant ICON_FAVICON   => 'emblem-photos';
 # MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
@@ -129,7 +129,7 @@ use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 use nginx;
 
 use Mojo::Template;
-use MIME::Base64 qw(encode_base64);
+#use MIME::Base64 qw(encode_base64);
 use MIME::Types;
 use File::Spec;
 use File::Basename;
@@ -169,15 +169,11 @@ sub handler($)
     # Stop unless GET or HEAD
     return HTTP_BAD_REQUEST
         unless $r->request_method eq 'GET' or $r->request_method eq 'HEAD';
-    # Return favicon
-    return show_favicon($r) if $r->filename =~ m{favicon\.png$}i;
-    # Stop unless dir or file
-    return HTTP_NOT_FOUND unless -f $r->filename or -d _;
+    # Stop unless dir
+    return HTTP_NOT_FOUND unless -d $r->filename;
     # Stop if header only
     return OK if $r->header_only;
 
-    # show file
-    return show_image($r) if -f _;
     # show directory index
     return show_index($r);
 }
@@ -185,41 +181,6 @@ sub handler($)
 =head1 PRIVATE FUNCTIONS
 
 =cut
-
-=head2 show_image
-
-Send image to client
-
-=cut
-
-sub show_image($)
-{
-    my $r = shift;
-    $r->send_http_header;
-    $r->sendfile( $r->filename );
-    return OK;
-}
-
-=head2 show_favicon
-
-Send favicon
-
-=cut
-
-sub show_favicon($)
-{
-    my $r = shift;
-
-    # Path to favicon
-    my $favicon_path = File::Spec->catfile(
-        $ICONS_PATH . '/' . ICON_FAVICON . '.png' );
-    # MIME of favicon
-    my $mime = $mimetypes->mimeTypeOf( $favicon_path ) || $mime_unknown;
-
-    $r->send_http_header("$mime");
-    $r->sendfile( $favicon_path );
-    return OK;
-}
 
 =head2 show_index
 
