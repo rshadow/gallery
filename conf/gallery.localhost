@@ -34,6 +34,39 @@ server {
     location / {
         perl  Nginx::Module::Gallery::handler;
         # Change this path to you pictures folder
-        root /home/rubin/Картинки;
+        root /home/rubin/workspace/gallery/t/data;
+
+        # Max icon dimension. In pixels. All thumbnails well be resized to
+        # this dimension.
+        # Default: 100
+        set $ICON_MAX_DIMENSION     100;
+
+        # Max icon size. In bytes.
+        # Default: 131072
+        set $ICON_MAX_SIZE          131072;
+
+        # Icon comression level 0-100 for use in PNG.
+        # Default: 95
+        set $ICON_COMPRESSION_LEVEL 95;
+
+        # Icon quality level 0-9 for use in videos.
+        # Default: 0
+        set $ICON_QUALITY_LEVEL     0;
+
+        # Path for thumbnails cache.
+        # Default: /var/cache/gallery
+        set $CACHE_PATH             "/home/rubin/workspace/gallery/cache";
+
+        # Mode for created thumbnails.
+        # Default: 0755
+        set $CACHE_MODE             0755;
+
+        # Templates path.
+        # Default: /usr/local/gallery/templates
+        set $TEMPLATE_PATH          "/home/rubin/workspace/gallery/templates";
+
+        # Path for MIME and other icons.
+        # Default: /usr/share/icons/gallery
+        set $ICONS_PATH             "/home/rubin/workspace/gallery/icons";
     }
 }

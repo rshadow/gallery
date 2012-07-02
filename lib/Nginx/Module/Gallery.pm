@@ -55,10 +55,11 @@ our $VERSION = 0.2.3;
 =head2 ICON_MAX_DIMENSION
 
 Max icon dimension. In pixels. All thumbnails well be resized to this dimension.
+Default: 100
 
 =cut
 
-our $ICON_MAX_DIMENSION     = 100; # pixels
+our $ICON_MAX_DIMENSION = 100; # pixels
 
 =head2 ICON_MAX_SIZE
 
@@ -66,11 +67,11 @@ Max icon size. In bytes. Default 128Kb.
 
 =cut
 
-our $ICON_MAX_SIZE          = 131072; # bytes
+our $ICON_MAX_SIZE = 131072; # bytes
 
 =head2 ICON_COMPRESSION_LEVEL
 
-Icon comression level 0-9 for use in PNG
+Icon comression level 0-100 for use in PNG
 
 =cut
 
@@ -86,35 +87,35 @@ our $ICON_QUALITY_LEVEL = 0;
 
 =head2 CACHE_PATH
 
-Path for thumbnails cache
+Path for thumbnails cache. Default: /var/cache/gallery
 
 =cut
 
-our $CACHE_PATH     = '/var/cache/gallery';
+our $CACHE_PATH = '/var/cache/gallery';
 
 =head2 CACHE_MODE
 
-Mode for created thumbnails
+Mode for created thumbnails. Default: 0755
 
 =cut
 
-our $CACHE_MODE     = 0755;
+our $CACHE_MODE = 0755;
 
 =head2 TEMPLATE_PATH
 
-Templates path
+Templates path. Default: /usr/local/gallery/templates
 
 =cut
 
-our $TEMPLATE_PATH  = '/home/rubin/workspace/gallery/templates';
+our $TEMPLATE_PATH = '/usr/local/gallery/templates';
 
 =head2 ICONS_PATH
 
-Path for MIME and other icons
+Path for MIME and other icons. Default: /usr/share/icons/gallery
 
 =cut
 
-our $ICONS_PATH     = '/home/rubin/workspace/gallery/icons';
+our $ICONS_PATH = '/usr/share/icons/gallery';
 
 # Fixed icons
 use constant ICON_FOLDER    => 'folder';
@@ -123,7 +124,9 @@ use constant ICON_FAVICON   => 'emblem-photos';
 # MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
-use nginx 1.1.11;
+#use nginx 1.1.11;
+#use Nginx;
+use nginx;
 
 use Mojo::Template;
 use MIME::Base64 qw(encode_base64);
@@ -159,6 +162,9 @@ Main loop handler
 sub handler($)
 {
     my $r = shift;
+
+    # Get configuration variables
+    _get_variables($r);
 
     # Stop unless GET or HEAD
     return HTTP_BAD_REQUEST
@@ -763,6 +769,36 @@ sub _escape_path($)
     my $escaped = $path;
     $escaped =~ s{([\s'".?*\(\)\+\}\{\]\[])}{\\$1}g;
     return $escaped;
+}
+
+=head2 _get_variables $r
+
+Get configuration variables from request $r
+
+=cut
+
+sub _get_variables
+{
+    my ($r) = @_;
+
+    $ICON_MAX_DIMENSION = $r->variable('ICON_MAX_DIMENSION')
+        if $r->variable('ICON_MAX_DIMENSION');
+    $ICON_MAX_SIZE = $r->variable('ICON_MAX_SIZE')
+        if $r->variable('ICON_MAX_SIZE');
+    $ICON_COMPRESSION_LEVEL = $r->variable('ICON_COMPRESSION_LEVEL')
+        if $r->variable('ICON_COMPRESSION_LEVEL');
+    $ICON_QUALITY_LEVEL = $r->variable('ICON_QUALITY_LEVEL')
+        if $r->variable('ICON_QUALITY_LEVEL');
+    $CACHE_PATH = $r->variable('CACHE_PATH')
+        if $r->variable('CACHE_PATH');
+    $CACHE_MODE = $r->variable('CACHE_MODE')
+        if $r->variable('CACHE_MODE');
+    $TEMPLATE_PATH = $r->variable('TEMPLATE_PATH')
+        if $r->variable('TEMPLATE_PATH');
+    $ICONS_PATH = $r->variable('ICONS_PATH')
+        if $r->variable('ICONS_PATH');
+
+    return 1;
 }
 
 1;
