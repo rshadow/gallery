@@ -251,7 +251,8 @@ sub show_index($)
         $mt->render(
             _template('top'),
             $TEMPLATE_PATH,
-            $title
+            $title,
+            $ICON_MAX_DIMENSION
         )
     );
 

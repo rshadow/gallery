@@ -1,4 +1,4 @@
-% my ($path, $title) = @_;
+% my ($path, $title, $size) = @_;
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -7,7 +7,7 @@
         %= $title || ''
     </title>
     <style type="text/css">
-        %= $self->render_file( $path . '/main.css' )
+        %= $self->render_file( $path . '/main.css', size => $size )
     </style>
     <link rel="shortcut icon" type="image/png" href="favicon.png" />
 </head>
