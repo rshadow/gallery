@@ -9,7 +9,7 @@
     <style type="text/css">
         %= $self->render_file( $opts{path} . '/main.css', size => $opts{size} )
     </style>
-    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="<%= $opts{favicon}{icon}{href} %>" />
 </head>
 <body>
     <header>

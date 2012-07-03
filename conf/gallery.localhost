@@ -60,7 +60,7 @@ server {
     # Default: /var/cache/gallery
     set $CACHE_PATH             "/home/rubin/workspace/gallery/cache";
 
-    set $CACHE_PREFIX			"abdd1ac22dcd41208fb629d24a8ea018";
+    set $CACHE_PREFIX			"/abdd1ac22dcd41208fb629d24a8ea018";
 
     # Mode for created thumbnails.
     # Default: 0755
@@ -74,12 +74,16 @@ server {
     # Default: /usr/share/icons/gallery
     set $ICONS_PATH              "/home/rubin/workspace/gallery/icons";
 
+    set $ICONS_PREFIX           "/abdd1ac22dcd41208fb629d24a8ea019";
+
+    set $MIME_PATH              "/home/rubin/workspace/gallery/icons/mime";
+
     # RULES
 
     # Set default root dir
 #    root $IMAGE_ROOT;
 
-    location = /favicon.png {
+    location = /abdd1ac22dcd41208fb629d24a8ea019/favicon.png {
         root /;
         # You can add path to find you own favicon in your distro
         try_files
@@ -87,7 +91,7 @@ server {
             $ICONS_PATH/favicon.png
             =404;
     }
-    location = /updir.png {
+    location = /abdd1ac22dcd41208fb629d24a8ea019/updir.png {
         root /;
         # You can add path to find you own updir image in your distro
         try_files
@@ -95,7 +99,7 @@ server {
             $ICONS_PATH/updir.png
             =404;
     }
-    location = /folder.png {
+    location = /abdd1ac22dcd41208fb629d24a8ea019/folder.png {
         root /;
         # You can add path to find you own folder image in your distro
         try_files

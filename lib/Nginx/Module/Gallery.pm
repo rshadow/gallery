@@ -150,6 +150,7 @@ sub show_index($)
             path    => $CONFIG{TEMPLATE_PATH},
             title   => $title,
             size    => $CONFIG{ICON_MAX_DIMENSION},
+            favicon => {icon => {href => $CONFIG{ICONS_PREFIX} . ICON_FAVICON}},
         )
     );
 
@@ -168,7 +169,7 @@ sub show_index($)
             filename    => File::Spec->updir,
             href        => $updir,
             icon        => {
-                href    => ICON_UPDIR,
+                href    => $CONFIG{ICONS_PREFIX} . ICON_UPDIR,
             },
         );
 
@@ -204,7 +205,7 @@ sub show_index($)
         # For folders get standart icon
         if( -d _ )
         {
-            $item{icon}{href} = ICON_FOLDER;
+            $item{icon}{href} = $CONFIG{ICONS_PREFIX} . ICON_FOLDER;
 
             # Remove directory fails
             delete $item{size};
@@ -672,7 +673,8 @@ sub _get_variables
 
     $CONFIG{$_} //= $r->variable( $_ )
         for qw(ICON_MAX_DIMENSION   ICON_MAX_SIZE   ICON_COMPRESSION_LEVEL
-               ICON_QUALITY_LEVEL   CACHE_PATH      CACHE_MODE
+               ICON_QUALITY_LEVEL
+               CACHE_PATH           CACHE_MODE      CACHE_PREFIX
                TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX);
     return 1;
 }
