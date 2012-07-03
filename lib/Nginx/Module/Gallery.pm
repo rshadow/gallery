@@ -55,15 +55,15 @@ our $VERSION = 0.2.3;
 our %CONFIG;
 
 # Fixed icons
-use constant ICON_FOLDER    => 'folder';
-use constant ICON_UPDIR     => 'edit-undo';
+use constant ICON_FOLDER    => '/folder.png';
+use constant ICON_UPDIR     => '/updir.png';
+use constant ICON_FAVICON   => '/favicon.png';
+
 #use constant ICON_FAVICON   => 'emblem-photos';
 # MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
-#use nginx 1.1.11;
-#use Nginx;
-use nginx;
+use nginx 1.1.11;
 
 use Mojo::Template;
 #use MIME::Base64 qw(encode_base64);
@@ -131,6 +131,7 @@ sub show_index($)
     our %template;
     my $mt = Mojo::Template->new;
     $mt->encoding('UTF-8');
+
     # Mime type
     our %icon;
 
@@ -161,16 +162,13 @@ sub show_index($)
         $_ = uri_escape $_ for @updir;
         my $updir = File::Spec->catdir( @updir );
 
-        my $icon = _icon_common( ICON_UPDIR );
-
         # Send updir icon
         my %item = (
             path        => File::Spec->updir,
             filename    => File::Spec->updir,
             href        => $updir,
             icon        => {
-                raw     => $icon->{raw},
-                mime    => $icon->{mime},
+                href    => ICON_UPDIR,
             },
         );
 
@@ -206,11 +204,7 @@ sub show_index($)
         # For folders get standart icon
         if( -d _ )
         {
-            my $icon = _icon_common( ICON_FOLDER );
-
-            # Save icon and some image information
-            $item{icon}{raw}    = $icon->{raw};
-            $item{icon}{mime}   = $icon->{mime};
+            $item{icon}{href} = ICON_FOLDER;
 
             # Remove directory fails
             delete $item{size};

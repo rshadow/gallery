@@ -19,7 +19,7 @@
                 <% if( defined $item->{height} ) { =%>
                     height="<%= $item->{height} =%>"
                 <% } =%>
-                src="data:<%= $item->{icon}{mime} %>;base64,<%= $item->{icon}{raw} %>"
+                src="<%= $item->{icon}{href} %>"
             />
         <% } =%>
         <% if( defined $item->{filename} ) { =%>
