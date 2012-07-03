@@ -44,9 +44,7 @@ footer {
     color: lightgrey;
     font-size: smaller;
     clear: both;
-    position: fixed;
-    bottom: 0px;
-    left: 0px;
+    padding-top: 250px;
 }
 footer:hover {
     color: black;
