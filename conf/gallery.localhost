@@ -14,10 +14,10 @@ server {
     error_log               /var/log/nginx/gallery.error.log;
 
     # Option: enable compression
-#    gzip                    on;
-#    gzip_min_length         1000;
-#    gzip_disable            msie6;
-#    gzip_proxied            expired no-cache no-store private auth;
+    gzip                    on;
+    gzip_min_length         1000;
+    gzip_disable            msie6;
+    gzip_proxied            expired no-cache no-store private auth;
 
     # Option: basic authorization
 #    auth_basic              "My Gallery";
@@ -37,7 +37,7 @@ server {
 
     # Root path of your gallery. Set it please.
     # Default: /usr/share/images
-    set $IMAGE_ROOT				"/usr/share/images";
+    set $IMAGE_ROOT				"/home/rubin/Изображения";
 
     # Max icon dimension. In pixels. All thumbnails well be resized to
     # this dimension.
@@ -60,11 +60,13 @@ server {
     # Default: /var/cache/gallery
     set $CACHE_PATH             "/home/rubin/workspace/gallery/cache";
 
+    # Prefix for URI to response thumbnails from cache.
+    # Default: /abdd1ac22dcd41208fb629d24a8ea018
     set $CACHE_PREFIX			"/abdd1ac22dcd41208fb629d24a8ea018";
 
     # Mode for created thumbnails.
     # Default: 0755
-    set $CACHE_MODE             0755;
+    set $CACHE_MODE             "0755";
 
     # Templates path.
     # Default: /usr/local/gallery/templates
@@ -74,38 +76,38 @@ server {
     # Default: /usr/share/icons/gallery
     set $ICONS_PATH              "/home/rubin/workspace/gallery/icons";
 
-    set $ICONS_PREFIX           "/abdd1ac22dcd41208fb629d24a8ea019";
+    # Prefix for URI to response MIME and other icons.
+    # Default: /5e4a8c2055fc441e97dd21c1b33b72f8
+    set $ICONS_PREFIX           "/5e4a8c2055fc441e97dd21c1b33b72f8";
 
     set $MIME_PATH              "/home/rubin/workspace/gallery/icons/mime";
 
     # RULES
-
-    # Set default root dir
-#    root $IMAGE_ROOT;
-
-    location = /abdd1ac22dcd41208fb629d24a8ea019/favicon.png {
-        root /;
-        # You can add path to find you own favicon in your distro
-        try_files
-            /usr/share/icons/gnome/16x16/emblems/emblem-photos.png
-            $ICONS_PATH/favicon.png
-            =404;
-    }
-    location = /abdd1ac22dcd41208fb629d24a8ea019/updir.png {
-        root /;
-        # You can add path to find you own updir image in your distro
-        try_files
-            /usr/share/icons/gnome/48x48/action/edit-undo.png
-            $ICONS_PATH/updir.png
-            =404;
-    }
-    location = /abdd1ac22dcd41208fb629d24a8ea019/folder.png {
-        root /;
-        # You can add path to find you own folder image in your distro
-        try_files
-            /usr/share/icons/gnome/48x48/places/folder.png
-            $ICONS_PATH/folder.png
-            =404;
+    location /5e4a8c2055fc441e97dd21c1b33b72f8 {
+        location = /5e4a8c2055fc441e97dd21c1b33b72f8/favicon.png {
+            root /;
+            # You can add path to find you own favicon in your distro
+            try_files
+                /usr/share/icons/gnome/16x16/emblems/emblem-photos.png
+                /usr/share/icons/gallery/favicon.png
+                =404;
+        }
+        location = /5e4a8c2055fc441e97dd21c1b33b72f8/updir.png {
+            root /;
+            # You can add path to find you own updir image in your distro
+            try_files
+                /usr/share/icons/gnome/48x48/actions/edit-undo.png
+                /usr/share/icons/gallery/updir.png
+                =404;
+        }
+        location = /5e4a8c2055fc441e97dd21c1b33b72f8/folder.png {
+            root /;
+            # You can add path to find you own folder image in your distro
+            try_files
+                /usr/share/icons/gnome/48x48/places/folder.png
+                /usr/share/icons/gallery/folder.png
+                =404;
+        }
     }
 
     # Send thumbnails directly from nginx
@@ -116,18 +118,9 @@ server {
         root $CACHE_PATH$IMAGE_ROOT;
     }
 
-    # Send files directly from nginx
-    location ~* ^([^/]|)$ {
-        root $IMAGE_ROOT;
-    }
 
-    # Show index for derectories
-    location ~* /$ {
+    location / {
         root $IMAGE_ROOT;
         perl  Nginx::Module::Gallery::handler;
-    }
-
-    location .* {
-        root /dev/null;
     }
 }

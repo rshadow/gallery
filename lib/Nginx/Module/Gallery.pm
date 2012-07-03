@@ -102,13 +102,30 @@ sub handler($)
     # Get configuration variables
     _get_variables($r);
 
-    # Stop unless GET or HEAD
-    return HTTP_BAD_REQUEST unless grep {$r->request_method eq $_} qw{GET HEAD};
-    # Stop unless dir
-    return HTTP_NOT_FOUND unless -d $r->filename;
+    return HTTP_BAD_REQUEST
+        unless $r->request_method eq 'GET' or $r->request_method eq 'HEAD';
+    # Return favicon
+    return show_favicon($r) if $r->filename =~ m{favicon\.png$}i;
+    # Stop unless dir or file
+    return HTTP_NOT_FOUND unless -f $r->filename or -d _;
     # Stop if header only
     return OK if $r->header_only;
 
+    # show file
+    return show_image($r) if -f _;
+    # show directory index
+    return show_index($r);
+
+
+    # Stop unless GET or HEAD
+    return HTTP_BAD_REQUEST unless grep {$r->request_method eq $_} qw{GET HEAD};
+    # Stop unless dir or file
+    return HTTP_NOT_FOUND unless -f $r->filename or -d _;
+    # Stop if header only
+    return OK if $r->header_only;
+
+    # show file
+    return show_image($r) if -f _;
     # show directory index
     return show_index($r);
 }
@@ -116,6 +133,20 @@ sub handler($)
 =head1 PRIVATE FUNCTIONS
 
 =cut
+
+=head2 show_image
+
+Send image to client
+
+=cut
+
+sub show_image($)
+{
+    my $r = shift;
+    $r->send_http_header;
+    $r->sendfile( $r->filename );
+    return OK;
+}
 
 =head2 show_index
 
@@ -142,6 +173,10 @@ sub show_index($)
     my $title = 'Gallery - ' . join ' : ', @tpath;
     undef @tpath;
 
+    # Make base uri
+#    my $base = $r->uri;
+#    $base =~ s#$CONFIG{IMAGE_ROOT}#/#;
+
     # Send top of index page
     $r->send_http_header("text/html; charset=utf-8");
     $r->print(
@@ -150,7 +185,11 @@ sub show_index($)
             path    => $CONFIG{TEMPLATE_PATH},
             title   => $title,
             size    => $CONFIG{ICON_MAX_DIMENSION},
-            favicon => {icon => {href => $CONFIG{ICONS_PREFIX} . ICON_FAVICON}},
+            favicon => {
+                icon => {
+                    href => _escape_url( $CONFIG{ICONS_PREFIX}, ICON_FAVICON ),
+                },
+            },
         )
     );
 
@@ -160,8 +199,8 @@ sub show_index($)
         # make link on updir
         my @updir = File::Spec->splitdir( $r->uri );
         pop @updir;
-        $_ = uri_escape $_ for @updir;
-        my $updir = File::Spec->catdir( @updir );
+        my $updir = _escape_url( File::Spec->catdir( @updir ) );
+        undef @updir;
 
         # Send updir icon
         my %item = (
@@ -169,7 +208,7 @@ sub show_index($)
             filename    => File::Spec->updir,
             href        => $updir,
             icon        => {
-                href    => $CONFIG{ICONS_PREFIX} . ICON_UPDIR,
+                href    => _escape_url( $CONFIG{ICONS_PREFIX}, ICON_UPDIR ),
             },
         );
 
@@ -189,9 +228,7 @@ sub show_index($)
         my $mime = $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
 
         my @href = File::Spec->splitdir( $r->uri );
-        push @href, $filename;
-        $_ = uri_escape $_ for @href;
-        my $href = File::Spec->catfile( @href );
+        my $href = _escape_url( File::Spec->catfile( @href, $filename ) );
 
         # Make item info hash
         my %item = (
@@ -205,7 +242,7 @@ sub show_index($)
         # For folders get standart icon
         if( -d _ )
         {
-            $item{icon}{href} = $CONFIG{ICONS_PREFIX} . ICON_FOLDER;
+            $item{icon}{href} = _escape_url($CONFIG{ICONS_PREFIX}, ICON_FOLDER);
 
             # Remove directory fails
             delete $item{size};
@@ -223,8 +260,16 @@ sub show_index($)
             unless( $icon )
             {
                 $icon = make_icon( $path, $mime, $r );
+
                 # Try to save in cache
-                save_icon_in_cache( $path, $icon ) if $icon;
+                if( $icon ) {
+                    my $cache_path = save_icon_in_cache( $path, $icon ) ;
+                    ( $icon->{filename} ) =
+                        File::Basename::fileparse($cache_path) if $cache_path;
+                }
+
+                # Cleanup
+                delete $icon->{raw};
             }
             # Make mime image icon
             unless( $icon )
@@ -235,12 +280,14 @@ sub show_index($)
             }
 
             # Save icon and some image information
-            $item{icon}{raw}        = $icon->{raw};
+            $item{icon}{href}       =
+                _escape_url($CONFIG{CACHE_PREFIX}, $r->uri, $icon->{filename});
             $item{icon}{mime}       = $icon->{mime};
             $item{image}{width}     = $icon->{image}{width}
                 if defined $icon->{image}{width};
             $item{image}{height}    = $icon->{image}{height}
                 if defined $icon->{image}{height};
+            $item{icon}{cached}     = $icon->{cached};
         }
         # Show mime icon for file
         else
@@ -249,7 +296,6 @@ sub show_index($)
             my $icon = _icon_mime( $path );
 
             # Save icon and some image information
-            $item{icon}{raw}        = $icon->{raw};
             $item{icon}{mime}       = $icon->{mime};
         }
 
@@ -272,7 +318,11 @@ sub _get_md5_image($)
 {
     my ($path) = @_;
     my ($size, $mtime) = ( stat($path) )[7,9];
-    return md5_hex join( ',', $path, $size, $mtime );
+    return md5_hex
+        join( ',', $path, $size, $mtime,
+            $CONFIG{ICON_MAX_DIMENSION}, $CONFIG{ICON_COMPRESSION_LEVEL},
+            $CONFIG{ICON_QUALITY_LEVEL}
+        );
 }
 
 =head2 get_icon_form_cache $path
@@ -297,19 +347,15 @@ sub get_icon_form_cache($)
     # Icon not found
     return () unless $cache_path;
 
-    # Get icon
-    open my $f, '<:raw', $cache_path or return ();
-    local $/;
-    my $raw = <$f>;
-    close $f;
-
     my ($image_width, $image_height, $ext) =
         $cache_path =~ m{^.*\.(\d+)x(\d+)\.(\w+)$}i;
 
+    my ($icon_filename, $icon_dir) = File::Basename::fileparse($cache_path);
+
     return {
-        raw     => $raw,
-        mime    => $mimetypes->mimeTypeOf( $ext ),
-        image   => {
+        filename    => $icon_filename,
+        mime        => $mimetypes->mimeTypeOf( $ext ),
+        image       => {
             width   => $image_width,
             height  => $image_height,
         },
@@ -333,11 +379,11 @@ sub save_icon_in_cache($$)
     make_path(
         File::Spec->catdir($CONFIG{CACHE_PATH}, $dir),
         {
-            mode    => $CONFIG{CACHE_MODE},
+            mode    => oct $CONFIG{CACHE_MODE},
             error   => \$error,
         }
     );
-    return if $! or @$error;
+    return if @$error;
 
     # Make path
     my $cache = File::Spec->catfile(
@@ -449,9 +495,9 @@ sub make_icon($;$$)
     }
 
     return {
-        raw     => $raw,
-        mime    => $mime,
-        image   => {
+        raw         => $raw,
+        mime        => $mime,
+        image       => {
             width   => $image_width,
             height  => $image_height,
             size    => $image_size,
@@ -481,40 +527,6 @@ sub _template($)
     close $f;
 
     return $template{ $name };
-}
-
-=head2 _icon_common $name
-
-Return common icon by $name
-
-=cut
-
-sub _icon_common
-{
-    my ($name) = @_;
-
-    our %common;
-    # Return if already loaded
-    return $common{$name} if $common{$name};
-
-    # Get icon path
-    my $icon_path = File::Spec->catfile($CONFIG{ICONS_PATH}, $name.'.png');
-
-    # Load icon
-    open my $fh, '<:raw', $icon_path or return;
-    local $/;
-    my $raw = <$fh>;
-    close $fh or return;
-    return unless $raw;
-
-    # Make as is BASE64 encoding for inline
-    $raw = MIME::Base64::encode_base64( $raw );
-
-    # Encode icon
-    $common{$name}{raw}     = $raw;
-    $common{$name}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
-
-    return $common{$name};
 }
 
 =head2 _icon_mime $path
@@ -659,6 +671,15 @@ sub _escape_path($)
     my $escaped = $path;
     $escaped =~ s{([\s'".?*\(\)\+\}\{\]\[])}{\\$1}g;
     return $escaped;
+}
+
+sub _escape_url(@)
+{
+    my (@path) = @_;
+    my @dirs;
+    push @dirs, File::Spec->splitdir( $_ ) for @path;
+    $_ = uri_escape $_ for @dirs;
+    return File::Spec->catfile( @dirs );
 }
 
 =head2 _get_variables $r
