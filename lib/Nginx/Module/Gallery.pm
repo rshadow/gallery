@@ -102,21 +102,6 @@ sub handler($)
     # Get configuration variables
     _get_variables($r);
 
-    return HTTP_BAD_REQUEST
-        unless $r->request_method eq 'GET' or $r->request_method eq 'HEAD';
-    # Return favicon
-    return show_favicon($r) if $r->filename =~ m{favicon\.png$}i;
-    # Stop unless dir or file
-    return HTTP_NOT_FOUND unless -f $r->filename or -d _;
-    # Stop if header only
-    return OK if $r->header_only;
-
-    # show file
-    return show_image($r) if -f _;
-    # show directory index
-    return show_index($r);
-
-
     # Stop unless GET or HEAD
     return HTTP_BAD_REQUEST unless grep {$r->request_method eq $_} qw{GET HEAD};
     # Stop unless dir or file
