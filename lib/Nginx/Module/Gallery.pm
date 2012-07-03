@@ -50,7 +50,7 @@ All icons cached on first request. Next show will be more fast.
 =cut
 
 # Module version
-our $VERSION = 0.2.3;
+our $VERSION = 0.2.4;
 
 our %CONFIG;
 
