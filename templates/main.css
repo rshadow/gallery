@@ -48,3 +48,6 @@ footer {
     bottom: 0px;
     left: 0px;
 }
+footer:hover {
+    color: black;
+}
