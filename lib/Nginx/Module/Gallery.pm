@@ -73,7 +73,6 @@ use File::Path qw(make_path);
 use File::Temp qw(tempfile);
 use File::Find;
 use Digest::MD5 'md5_hex';
-use List::MoreUtils qw(any);
 use URI::Escape qw(uri_escape);
 
 # MIME definition objects
@@ -145,12 +144,8 @@ sub show_index($)
     my $r = shift;
 
     # Templates
-    our %template;
     my $mt = Mojo::Template->new;
     $mt->encoding('UTF-8');
-
-    # Mime type
-    our %icon;
 
     # Send top of index page
     $r->send_http_header("text/html; charset=utf-8");
