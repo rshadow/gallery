@@ -7,7 +7,7 @@ server {
 
     server_name             gallery.localhost www.gallery.localhost;
 
-    # SOME EXAMPLE
+    # SAME EXAMPLE #############################################################
 
     # Logs
     access_log              /var/log/nginx/gallery.access.log;
@@ -33,7 +33,7 @@ server {
 #    ssl_ciphers             ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:_EXP;
 #    ssl_prefer_server_ciphers on;
 
-    # VARIABLES
+    # VARIABLES ################################################################
 
     # Root path of your gallery. Set it please.
     # Default: /usr/share/images
@@ -76,49 +76,102 @@ server {
     # Default: /usr/share/icons/gallery
     set $ICONS_PATH              "/home/rubin/workspace/gallery/icons";
 
-    # Prefix for URI to response MIME and other icons.
+    # Prefix for URI to response common icons.
     # Default: /5e4a8c2055fc441e97dd21c1b33b72f8
     set $ICONS_PREFIX           "/5e4a8c2055fc441e97dd21c1b33b72f8";
 
-    set $MIME_PATH              "/home/rubin/workspace/gallery/icons/mime";
+    # Prefix for URI to response common MIME and other icons.
+    # Default: /4c65c292edec4b708679606990be8ce3
+    set $MIME_PREFIX            "/4c65c292edec4b708679606990be8ce3";
 
-    # RULES
+    # RULES ####################################################################
+
     location /5e4a8c2055fc441e97dd21c1b33b72f8 {
         location = /5e4a8c2055fc441e97dd21c1b33b72f8/favicon.png {
-            root /;
+            root /usr/share/icons/;
             # You can add path to find you own favicon in your distro
             try_files
-                /usr/share/icons/gnome/16x16/emblems/emblem-photos.png
-                /usr/share/icons/gallery/favicon.png
+                /gnome/16x16/emblems/emblem-photos.png
+                /gallery/favicon.png
                 =404;
         }
         location = /5e4a8c2055fc441e97dd21c1b33b72f8/updir.png {
-            root /;
+            root /usr/share/icons/;
             # You can add path to find you own updir image in your distro
             try_files
-                /usr/share/icons/gnome/48x48/actions/edit-undo.png
-                /usr/share/icons/gallery/updir.png
+                /gnome/48x48/actions/edit-undo.png
+                /gallery/updir.png
                 =404;
         }
         location = /5e4a8c2055fc441e97dd21c1b33b72f8/folder.png {
-            root /;
+            root /usr/share/icons/;
             # You can add path to find you own folder image in your distro
             try_files
-                /usr/share/icons/gnome/48x48/places/folder.png
-                /usr/share/icons/gallery/folder.png
+                /gnome/48x48/places/folder.png
+                /gallery/folder.png
                 =404;
         }
+    }
+
+    # Send MIME icons directly from nginx
+    # Default prefix: 4c65c292edec4b708679606990be8ce3
+    # You can change this prefix if you have directory with same name
+    location ~ /4c65c292edec4b708679606990be8ce3/ {
+        rewrite /[a-z0-9]*/(.*) /$1 break;
+        root /usr/share/icons/;
+        try_files
+            /gallery/mimetypes/$uri
+            @gnome;
+    }
+    # Try get mime icons in gnome-collection
+    location @gnome {
+        root /usr/share/icons/;
+        try_files
+            /gnome/48x48/mimetypes/$uri
+            @gnome-mime;
+    }
+    location @gnome-mime {
+        rewrite /(.*) /gnome-mime-$1 break;
+        root /usr/share/icons/;
+        try_files
+            /gnome/48x48/mimetypes/$uri
+            @media;
+    }
+    # Try get mime icons by common media type
+    location @media {
+        rewrite /gnome-mime-([^-.]+)(-.*)? /$1.png break;
+        root /usr/share/icons/;
+        try_files
+            /gnome/48x48/mimetypes/$uri
+            /gallery/mimetypes/$uri
+            @media-x-generic;
+    }
+    location @media-x-generic {
+        rewrite /([^-.]+)(-.*)? /$1-x-generic.png break;
+        root /usr/share/icons/;
+        try_files
+            /gnome/48x48/mimetypes/$uri
+            /gallery/mimetypes/$uri
+            @unknown;
+    }
+    # Defaul MIME icon - unknown.png
+    location @unknown {
+        root /usr/share/icons/;
+        try_files
+            /gnome/48x48/mimetypes/unknown.png
+            /gallery/mimetypes/unknown.png
+            =404;
     }
 
     # Send thumbnails directly from nginx
     # Default prefix: abdd1ac22dcd41208fb629d24a8ea018
     # You can change this prefix if you have directory with same name
     location ~ /abdd1ac22dcd41208fb629d24a8ea018/ {
-        rewrite /abdd1ac22dcd41208fb629d24a8ea018/(.*) /$1 break;
+        rewrite /[a-z0-9]*/(.*) /$1 break;
         root $CACHE_PATH$IMAGE_ROOT;
     }
 
-
+    # Derectory index handler
     location / {
         root $IMAGE_ROOT;
         perl  Nginx::Module::Gallery::handler;

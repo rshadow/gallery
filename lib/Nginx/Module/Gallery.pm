@@ -66,7 +66,6 @@ use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 use nginx 1.1.11;
 
 use Mojo::Template;
-#use MIME::Base64 qw(encode_base64);
 use MIME::Types;
 use File::Spec;
 use File::Basename;
@@ -83,9 +82,11 @@ our $mime_unknown   = MIME::Type->new(
     simplified  => 'unknown/unknown',
     type        => 'x-unknown/x-unknown'
 );
+
+# Default mime for thumbnails and icons
 our $mime_png   = $mimetypes->mimeTypeOf( 'png' );
 
-=head1 FUNCTIONS
+=head1 HANDLERS
 
 =cut
 
@@ -115,7 +116,7 @@ sub handler($)
     return show_index($r);
 }
 
-=head1 PRIVATE FUNCTIONS
+=head1 FUNCTIONS
 
 =cut
 
@@ -157,10 +158,6 @@ sub show_index($)
     push @tpath, '/' unless @tpath;
     my $title = 'Gallery - ' . join ' : ', @tpath;
     undef @tpath;
-
-    # Make base uri
-#    my $base = $r->uri;
-#    $base =~ s#$CONFIG{IMAGE_ROOT}#/#;
 
     # Send top of index page
     $r->send_http_header("text/html; charset=utf-8");
@@ -236,52 +233,25 @@ sub show_index($)
         # For images make icons and get some information
         elsif( $mime->mediaType eq 'image' or $mime->mediaType eq 'video' )
         {
-            # Has thumbnail
-            $item{icon}{thumb}      = 1;
-
             # Load icon from cache
-            my $icon = get_icon_form_cache( $path );
+            my $icon = get_icon_form_cache( $path, $r->uri );
             # Try to make icon
-            unless( $icon )
-            {
-                $icon = make_icon( $path, $mime, $r );
-
-                # Try to save in cache
-                if( $icon ) {
-                    my $cache_path = save_icon_in_cache( $path, $icon ) ;
-                    ( $icon->{filename} ) =
-                        File::Basename::fileparse($cache_path) if $cache_path;
-                }
-
-                # Cleanup
-                delete $icon->{raw};
-            }
+            $icon = update_icon_in_cache( $path, $r->uri, $mime ) unless $icon;
             # Make mime image icon
-            unless( $icon )
-            {
-                $icon = _icon_mime( $path );
-                # Can`t create/load thumbnail
-                delete $item{icon}{thumb};
-            }
+            $icon = _icon_mime( $path ) unless $icon;
 
             # Save icon and some image information
-            $item{icon}{href}       =
-                _escape_url($CONFIG{CACHE_PREFIX}, $r->uri, $icon->{filename});
-            $item{icon}{mime}       = $icon->{mime};
-            $item{image}{width}     = $icon->{image}{width}
-                if defined $icon->{image}{width};
-            $item{image}{height}    = $icon->{image}{height}
-                if defined $icon->{image}{height};
-            $item{icon}{cached}     = $icon->{cached};
+            $item{icon} = $icon;
+            $item{image}{width}     = $icon->{orig}{width}
+                if defined $icon->{orig}{width};
+            $item{image}{height}    = $icon->{orig}{height}
+                if defined $icon->{orig}{height};
         }
         # Show mime icon for file
         else
         {
             # Load mime icon
-            my $icon = _icon_mime( $path );
-
-            # Save icon and some image information
-            $item{icon}{mime}       = $icon->{mime};
+            $item{icon} = _icon_mime( $path );
         }
 
         $r->print( $mt->render( _template('item'), item => \%item ) );
@@ -293,32 +263,15 @@ sub show_index($)
     return OK;
 }
 
-=head2 _get_md5_image $path
-
-Return unque MD5 hex string for image file by it`s $path
-
-=cut
-
-sub _get_md5_image($)
-{
-    my ($path) = @_;
-    my ($size, $mtime) = ( stat($path) )[7,9];
-    return md5_hex
-        join( ',', $path, $size, $mtime,
-            $CONFIG{ICON_MAX_DIMENSION}, $CONFIG{ICON_COMPRESSION_LEVEL},
-            $CONFIG{ICON_QUALITY_LEVEL}
-        );
-}
-
 =head2 get_icon_form_cache $path
 
 Check icon for image by $path in cache and return it if exists
 
 =cut
 
-sub get_icon_form_cache($)
+sub get_icon_form_cache($$)
 {
-    my ($path) = @_;
+    my ($path, $uri) = @_;
 
     my ($filename, $dir) = File::Basename::fileparse($path);
 
@@ -330,7 +283,7 @@ sub get_icon_form_cache($)
     my ($cache_path) = glob $mask;
 
     # Icon not found
-    return () unless $cache_path;
+    return unless $cache_path;
 
     my ($image_width, $image_height, $ext) =
         $cache_path =~ m{^.*\.(\d+)x(\d+)\.(\w+)$}i;
@@ -338,26 +291,216 @@ sub get_icon_form_cache($)
     my ($icon_filename, $icon_dir) = File::Basename::fileparse($cache_path);
 
     return {
+        href        => _escape_url($CONFIG{CACHE_PREFIX}, $uri, $icon_filename),
         filename    => $icon_filename,
         mime        => $mimetypes->mimeTypeOf( $ext ),
         image       => {
             width   => $image_width,
             height  => $image_height,
         },
+        thumb       => 1,
+        cached      => 1,
     };
 }
 
-=head2 save_icon_in_cache
+=head2 update_icon_in_cache $path, $uri, $mime
 
-Save $icon in cache for image by $path
+Get $path and $uri of image and make icon for it
 
 =cut
 
-sub save_icon_in_cache($$)
+sub update_icon_in_cache($)
 {
-    my ($path, $icon) = @_;
+    my ($path, $uri, $mime ) = @_;
 
-    my ($filename, $dir) = File::Basename::fileparse($path);
+    # Get MIME type of original file
+    $mime //= $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
+
+    my $icon;
+
+    # Get raw thumbnail data
+    if($mime->subType eq 'vnd.microsoft.icon')
+    {
+        $icon = _get_icon_thumb( $path );
+    }
+    elsif( $mime->mediaType eq 'video' )
+    {
+        $icon = _get_video_thumb( $path );
+    }
+    elsif( $mime->mediaType eq 'image' )
+    {
+        $icon = _get_image_thumb( $path );
+    }
+
+    return unless $icon;
+
+    # Save thunbnail
+    $icon = _save_thumb($icon);
+
+    # Make href on thumbnail
+    $icon->{href} =
+        _escape_url( $CONFIG{CACHE_PREFIX}, $uri, $icon->{filename} );
+
+    # Cleanup
+    delete $icon->{raw};
+
+    return wantarray ?%$icon :$icon;
+}
+
+=head1 PRIVATE FUNCTIONS
+
+=cut
+
+=head2 _get_video_thumb $path
+
+Get raw thumbnail data for video file by it`s $path
+
+=cut
+
+sub _get_video_thumb($)
+{
+    my ($path) = @_;
+
+    # Get standart extension
+    my @ext     = $mime_png->extensions;
+    my $suffix  = $ext[0] || 'png';
+
+    # Full file read
+    local $/;
+
+    # Convert to temp thumbnail file
+    my ($fh, $filename) =
+        tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.'.$suffix );
+    return unless $fh;
+
+    system '/usr/bin/ffmpegthumbnailer',
+        '-s', $CONFIG{ICON_MAX_DIMENSION},
+        '-q', $CONFIG{ICON_QUALITY_LEVEL},
+#            '-f',
+        '-i', $path,
+        '-o', $filename;
+
+    # Get image
+    my $raw = <$fh>;
+    close $fh or return;
+    return unless $raw;
+
+    my $mime = $mime_png || $mime_unknown;
+
+    my %result = (
+        raw     => $raw,
+        mime    => $mime,
+        orig    => {
+            path    => $path,
+        },
+    );
+
+    return wantarray ?%result :\%result;
+}
+
+=head2 _get_image_thumb $path
+
+Get raw thumbnail data for image file by it`s $path
+
+=cut
+
+sub _get_image_thumb($)
+{
+    my ($path) = @_;
+
+    # Full file read
+    local $/;
+
+    # Get image params
+    open my $pipe1, '-|:utf8',
+        '/usr/bin/identify',
+        '-format', '%wx%h %b',
+        $path;
+    my $params = <$pipe1> || '';
+    close $pipe1;
+
+    my ($image_width, $image_height, $image_size) =
+        $params =~ m/^(\d+)x(\d+)\s+(\d+)[a-zA-Z]*\s*$/;
+
+    open my $pipe2, '-|:raw',
+        '/usr/bin/convert',
+        '-quiet',
+        '-strip',
+        '-delete', '1--1',
+        $path,
+        '-auto-orient',
+        '-quality', $CONFIG{ICON_COMPRESSION_LEVEL},
+        '-thumbnail',
+        $CONFIG{ICON_MAX_DIMENSION}.'x'.$CONFIG{ICON_MAX_DIMENSION}.'>',
+        '-colorspace', 'RGB',
+        '-';
+    my $raw = <$pipe2>;
+    close $pipe2;
+    return unless $raw;
+
+    # Get mime type as icon type
+    my $mime = $mime_png || $mime_unknown;
+
+    my %result = (
+        raw     => $raw,
+        mime    => $mime,
+        orig    => {
+            path    => $path,
+            width   => $image_width,
+            heigth  => $image_height,
+            size    => $image_size,
+        },
+    );
+
+    return wantarray ?%result :\%result;
+}
+
+=head2 _get_image_thumb $path
+
+Get raw thumbnail data for icon file by it`s $path
+
+=cut
+
+sub _get_icon_thumb($)
+{
+    my ($path) = @_;
+
+    # Show just small icons
+    return unless -s $path < $CONFIG{ICON_MAX_SIZE};
+
+    # Full file read
+    local $/;
+
+    # Get image
+    open my $fh, '<:raw', $path or return;
+    my $raw = <$fh>;
+    close $fh or return;
+    return unless $raw;
+
+    my $mime = $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
+
+    my %result = (
+        raw     => $raw,
+        mime    => $mime,
+        orig    => {
+            path    => $path,
+        },
+    );
+
+    return wantarray ?%result :\%result;
+}
+
+=head2 _save_thumb $icon
+
+Save $icon in cache
+
+=cut
+
+sub _save_thumb($)
+{
+    my ($icon) = @_;
+
+    my ($filename, $dir) = File::Basename::fileparse($icon->{orig}{path});
 
     # Create dirs
     my $error;
@@ -370,124 +513,29 @@ sub save_icon_in_cache($$)
     );
     return if @$error;
 
+    my $icon_filename = sprintf( '%s.%dx%d.%s',
+        _get_md5_image( $icon->{orig}{path} ),
+        $icon->{orig}{width},
+        $icon->{orig}{height},
+        $icon->{mime}->subType
+    );
+
     # Make path
     my $cache = File::Spec->catfile(
-        $CONFIG{CACHE_PATH},
-        $dir,
-        sprintf( '%s.%dx%d.%s',
-            _get_md5_image( $path ),
-            $icon->{image}{width},
-            $icon->{image}{height},
-            $icon->{mime}->subType
-        )
-    );
+        $CONFIG{CACHE_PATH}, $dir, $icon_filename );
 
     # Store icon on disk
     open my $f, '>:raw', $cache or return;
     print $f $icon->{raw};
     close $f;
 
-    return $cache;
-}
+    # Set path and flag
+    $icon->{path}       = $cache;
+    $icon->{thumb}      = 1;
+    $icon->{cached}     = 1;
+    $icon->{filename}   = $icon_filename;
 
-=head2 make_icon $path
-
-Get $path of image and make icon for it
-
-=cut
-
-sub make_icon($;$$)
-{
-    my ($path, $mime, $r) = @_;
-
-    # Get MIME type
-    $mime //= $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
-
-    # Count icon width and height
-    my ($raw, $image_width, $image_height, $image_size);
-
-    if($mime->subType eq 'vnd.microsoft.icon')
-    {
-        # Show just small icons
-        return unless -s $path < $CONFIG{ICON_MAX_SIZE};
-
-        # Get image
-        open my $fh, '<:raw', $path or return;
-        local $/;
-        $raw = <$fh>;
-        close $fh or return;
-        return unless $raw;
-    }
-    elsif( $mime->mediaType eq 'video')
-    {
-        # Full file read
-        local $/;
-
-        # Convert to temp thumbnail file
-        my ($fh, $filename) =
-            tempfile( UNLINK => 1, OPEN => 1, SUFFIX => '.png' );
-        return unless $fh;
-
-        system '/usr/bin/ffmpegthumbnailer',
-            '-s', $CONFIG{ICON_MAX_DIMENSION},
-            '-q', $CONFIG{ICON_QUALITY_LEVEL},
-#            '-f',
-            '-i', $path,
-            '-o', $filename;
-
-        # Get image
-        local $/;
-        $raw = <$fh>;
-        close $fh or return;
-        return unless $raw;
-
-        $mime = $mime_png || $mime_unknown;
-    }
-    else
-    {
-        # Full file read
-        local $/;
-
-        # Get image params
-        open my $pipe1, '-|:utf8',
-            '/usr/bin/identify',
-            '-format', '%wx%h %b',
-            $path;
-        my $params = <$pipe1>;
-        close $pipe1;
-
-        ($image_width, $image_height, $image_size) =
-            $params =~ m/^(\d+)x(\d+)\s+(\d+)[a-zA-Z]*\s*$/;
-
-        open my $pipe2, '-|:raw',
-            '/usr/bin/convert',
-            '-quiet',
-            '-strip',
-            '-delete', '1--1',
-            $path,
-            '-auto-orient',
-            '-quality', $CONFIG{ICON_COMPRESSION_LEVEL},
-            '-thumbnail',
-            $CONFIG{ICON_MAX_DIMENSION}.'x'.$CONFIG{ICON_MAX_DIMENSION}.'>',
-            '-colorspace', 'RGB',
-            '-';
-        $raw = <$pipe2>;
-        close $pipe2;
-        return unless $raw;
-
-        # Get mime type as icon type
-        $mime = $mime_png || $mime_unknown;
-    }
-
-    return {
-        raw         => $raw,
-        mime        => $mime,
-        image       => {
-            width   => $image_width,
-            height  => $image_height,
-            size    => $image_size,
-        },
-    };
+    return $icon;
 }
 
 =head2 _template $name
@@ -533,56 +581,17 @@ sub _icon_mime
     my $sub     = $mime->subType;
     my $full    = join '-', $mime =~ m{^(.*?)/(.*)$};
 
-    # Return icon if already loaded
-    our %mime;
-    return $mime{$str} if $mime{$str};
+    my @ext = $mime_png->extensions;
 
-    my @icon_path = (
-        # Full MIME type
-        File::Spec->catfile($CONFIG{ICONS_PATH}, 'mime',
-            sprintf( '%s-%s.png', $media, $sub ) ),
-        # MIME::Type bug subType is empty =(
-        File::Spec->catfile($CONFIG{ICONS_PATH}, 'mime',
-            sprintf( '%s.png', $full ) ),
-        # Common by media type
-        File::Spec->catfile($CONFIG{ICONS_PATH}, 'mime',
-            sprintf( '%s.png', $media ) ),
-        # By file extension
-        File::Spec->catfile($CONFIG{ICONS_PATH}, 'mime',
-            sprintf( '%s.png', $extension ) ),
+    my $href = _escape_url(
+        $CONFIG{MIME_PREFIX},
+        sprintf( '%s.%s', $full, ($ext[0] || 'png') ),
     );
 
-    # Load icon from varios paths
-    my ($raw, $icon_path);
-    for my $search_path ( @icon_path )
-    {
-        # Skip if file not exists
-        next unless -f $search_path;
-
-        # Load icon
-        open my $fh, '<:raw', $search_path or next;
-        local $/;
-        $raw = <$fh>;
-        close $fh or next;
-        next unless $raw;
-
-        # Save icon and stop search
-        $icon_path = $search_path;
-        last;
-    }
-    # Try to load default icon for unknown type
-    return _icon_mime( MIME_UNKNOWN ) if ! $raw and $mime ne MIME_UNKNOWN;
-    # Return unless icon =(
-    return unless $raw;
-
-    # Make as is BASE64 encoding for inline
-    $raw = MIME::Base64::encode_base64( $raw );
-
-    # Encode icon
-    $mime{$str}{raw}     = $raw;
-    $mime{$str}{mime}    = $mimetypes->mimeTypeOf( $icon_path );
-
-    return $mime{$str};
+    return {
+        mime    => $mime,
+        href    => $href,
+    };
 }
 
 =head2 as_human_size(NUM)
@@ -644,6 +653,23 @@ sub _as_human_size($)
     return $result{human};
 }
 
+=head2 _get_md5_image $path
+
+Return unque MD5 hex string for image file by it`s $path
+
+=cut
+
+sub _get_md5_image($)
+{
+    my ($path) = @_;
+    my ($size, $mtime) = ( stat($path) )[7,9];
+    return md5_hex
+        join( ',', $path, $size, $mtime,
+            $CONFIG{ICON_MAX_DIMENSION}, $CONFIG{ICON_COMPRESSION_LEVEL},
+            $CONFIG{ICON_QUALITY_LEVEL}
+        );
+}
+
 =head2 _escape_path $path
 
 Return escaped $path
@@ -657,6 +683,12 @@ sub _escape_path($)
     $escaped =~ s{([\s'".?*\(\)\+\}\{\]\[])}{\\$1}g;
     return $escaped;
 }
+
+=head2 _escape_url @path
+
+Return escaped uri for list of @path partitions
+
+=cut
 
 sub _escape_url(@)
 {
@@ -681,7 +713,8 @@ sub _get_variables
         for qw(ICON_MAX_DIMENSION   ICON_MAX_SIZE   ICON_COMPRESSION_LEVEL
                ICON_QUALITY_LEVEL
                CACHE_PATH           CACHE_MODE      CACHE_PREFIX
-               TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX);
+               TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX
+               MIME_PREFIX);
     return 1;
 }
 
