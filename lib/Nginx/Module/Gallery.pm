@@ -410,7 +410,7 @@ sub _save_thumb($)
     make_path(
         File::Spec->catdir($CONFIG{CACHE_PATH}, $dir),
         {
-            mode    => oct $CONFIG{CACHE_MODE},
+            mode    => $CONFIG{CACHE_MODE},
             error   => \$error,
         }
     );
@@ -618,6 +618,10 @@ sub _get_variables
                CACHE_PATH           CACHE_MODE      CACHE_PREFIX
                TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX
                MIME_PREFIX);
+
+    # Fix value
+    $CONFIG{CACHE_MODE} = oct $CONFIG{CACHE_MODE};
+
     return 1;
 }
 
