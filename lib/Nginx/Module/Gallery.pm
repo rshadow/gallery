@@ -59,7 +59,6 @@ use constant ICON_FOLDER    => '/folder.png';
 use constant ICON_UPDIR     => '/updir.png';
 use constant ICON_FAVICON   => '/favicon.png';
 
-#use constant ICON_FAVICON   => 'emblem-photos';
 # MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
@@ -149,104 +148,20 @@ sub show_index($)
 
     # Send top of index page
     $r->send_http_header("text/html; charset=utf-8");
-    $r->print(
-        $mt->render(
-            _template('top'),
-            path    => $CONFIG{TEMPLATE_PATH},
-            title   =>  _make_title( $r->uri ),
-            size    => $CONFIG{ICON_MAX_DIMENSION},
-            favicon => {
-                icon => {
-                    href => _escape_url( $CONFIG{ICONS_PREFIX}, ICON_FAVICON ),
-                },
-            },
-        )
-    );
+    $r->print( _get_index_top($mt, $r->uri) );
 
-    # Add updir for non root directory
-    unless( $r->uri eq '/' )
-    {
-        # make link on updir
-        my @updir = File::Spec->splitdir( $r->uri );
-        pop @updir;
-        my $updir = _escape_url( File::Spec->catdir( @updir ) );
-        undef @updir;
-
-        # Send updir icon
-        my %item = (
-            path        => File::Spec->updir,
-            filename    => File::Spec->updir,
-            href        => $updir,
-            icon        => {
-                href    => _escape_url( $CONFIG{ICONS_PREFIX}, ICON_UPDIR ),
-            },
-        );
-
-        $r->print( $mt->render( _template('item'), item => \%item ) );
-    }
+    # Send updir link if need
+    $r->print( _get_index_updir($mt, $r->uri) );
 
     # Get directory index
     my $mask  = File::Spec->catfile( _escape_path($r->filename), '*' );
     my @index = sort {-d $b cmp -d $a} sort {uc $a cmp uc $b} glob $mask;
 
-    # Create index
-    for my $path ( @index )
-    {
-        # Get filename
-        my ($filename, $dir) = File::Basename::fileparse($path);
-        my ($digit, $letter, $bytes, $human) = _as_human_size( -s $path );
-        my $mime = $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
-
-        my @href = File::Spec->splitdir( $r->uri );
-        my $href = _escape_url( File::Spec->catfile( @href, $filename ) );
-
-        # Make item info hash
-        my %item = (
-            path        => $path,
-            filename    => $filename,
-            href        => $href,
-            size        => $human,
-            mime        => $mime,
-        );
-
-        # For folders get standart icon
-        if( -d _ )
-        {
-            $item{icon}{href} = _escape_url($CONFIG{ICONS_PREFIX}, ICON_FOLDER);
-
-            # Remove directory fails
-            delete $item{size};
-            delete $item{mime};
-        }
-        # For images make icons and get some information
-        elsif( $mime->mediaType eq 'image' or $mime->mediaType eq 'video' )
-        {
-            # Load icon from cache
-            my $icon = get_icon_form_cache( $path, $r->uri );
-            # Try to make icon
-            $icon = update_icon_in_cache( $path, $r->uri, $mime ) unless $icon;
-            # Make mime image icon
-            $icon = _icon_mime( $path ) unless $icon;
-
-            # Save icon and some image information
-            $item{icon} = $icon;
-            $item{image}{width}     = $icon->{orig}{width}
-                if defined $icon->{orig}{width};
-            $item{image}{height}    = $icon->{orig}{height}
-                if defined $icon->{orig}{height};
-        }
-        # Show mime icon for file
-        else
-        {
-            # Load mime icon
-            $item{icon} = _icon_mime( $path );
-        }
-
-        $r->print( $mt->render( _template('item'), item => \%item ) );
-    }
+    # Send index
+    $r->print( _get_index_item($mt, $r->uri, $_) ) for @index;
 
     # Send bottom of index page
-    $r->print( $mt->render( _template('bottom') ) );
+    $r->print( _get_index_bottom($mt) );
 
     return OK;
 }
@@ -297,7 +212,7 @@ Get $path and $uri of image and make icon for it
 
 =cut
 
-sub update_icon_in_cache($)
+sub update_icon_in_cache($$;$)
 {
     my ($path, $uri, $mime ) = @_;
 
@@ -719,6 +634,109 @@ sub _make_title($)
     @tpath = grep {$_} @tpath;
     push @tpath, '/' unless @tpath;
     return 'Gallery - ' . join ' : ', @tpath;
+}
+
+sub _get_index_top($$) {
+    my ($mt, $url) = @_;
+
+    return
+        $mt->render(
+            _template('top'),
+            path    => $CONFIG{TEMPLATE_PATH},
+            title   =>  _make_title( $url ),
+            size    => $CONFIG{ICON_MAX_DIMENSION},
+            favicon => {
+                icon => {
+                    href => _escape_url( $CONFIG{ICONS_PREFIX}, ICON_FAVICON ),
+                },
+            },
+        );
+}
+
+sub _get_index_updir($$) {
+    my ($mt, $url) = @_;
+
+    # Add updir for non root directory
+    return '' if $url eq '/';
+
+    # make link on updir
+    my @updir = File::Spec->splitdir( $url );
+    pop @updir;
+    my $updir = _escape_url( File::Spec->catdir( @updir ) );
+    undef @updir;
+
+    # Send updir icon
+    my %item = (
+        path        => File::Spec->updir,
+        filename    => File::Spec->updir,
+        href        => $updir,
+        icon        => {
+            href    => _escape_url( $CONFIG{ICONS_PREFIX}, ICON_UPDIR ),
+        },
+    );
+
+    return $mt->render( _template('item'), item => \%item );
+}
+
+sub _get_index_item($$$) {
+    my ($mt, $url, $path) = @_;
+
+    # Get filename
+    my ($filename, $dir) = File::Basename::fileparse($path);
+    my ($digit, $letter, $bytes, $human) = _as_human_size( -s $path );
+    my $mime = $mimetypes->mimeTypeOf( $path ) || $mime_unknown;
+
+    my @href = File::Spec->splitdir( $url );
+    my $href = _escape_url( File::Spec->catfile( @href, $filename ) );
+
+    # Make item info hash
+    my %item = (
+        path        => $path,
+        filename    => $filename,
+        href        => $href,
+        size        => $human,
+        mime        => $mime,
+    );
+
+    # For folders get standart icon
+    if( -d _ )
+    {
+        $item{icon}{href} = _escape_url($CONFIG{ICONS_PREFIX}, ICON_FOLDER);
+
+        # Remove directory fails
+        delete $item{size};
+        delete $item{mime};
+    }
+    # For images make icons and get some information
+    elsif( $mime->mediaType eq 'image' or $mime->mediaType eq 'video' )
+    {
+        # Load icon from cache
+        my $icon = get_icon_form_cache( $path, $url );
+        # Try to make icon
+        $icon = update_icon_in_cache( $path, $url, $mime ) unless $icon;
+        # Make mime image icon
+        $icon = _icon_mime( $path ) unless $icon;
+
+        # Save icon and some image information
+        $item{icon} = $icon;
+        $item{image}{width}     = $icon->{orig}{width}
+            if defined $icon->{orig}{width};
+        $item{image}{height}    = $icon->{orig}{height}
+            if defined $icon->{orig}{height};
+    }
+    # Show mime icon for file
+    else
+    {
+        # Load mime icon
+        $item{icon} = _icon_mime( $path );
+    }
+
+    return $mt->render( _template('item'), item => \%item );
+}
+
+sub _get_index_bottom($) {
+    my ($mt) = @_;
+    return $mt->render( _template('bottom') )
 }
 
 1;
