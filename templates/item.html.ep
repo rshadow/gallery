@@ -1,17 +1,16 @@
 % my (%opts) = @_;
 % my $item = $opts{item};
-<div class="item">
+<%
+    my @class = ('item');
+    push @class, $item->{mime}->mediaType if defined $item->{mime};
+    push @class, 'thumb' if defined $item->{icon} and $item->{icon}{thumb};
+%>
+<div class="<%= join ' ', @class =%>">
     <a href="<%= $item->{href} =%>">
         <% if( defined $item->{icon} ) { =%>
             <img
                 <% if( defined $item->{mime} ) { =%>
                     title="<%= "$item->{mime}" =%>"
-                    <%
-                        my @class = ();
-                        push @class, $item->{mime}->mediaType;
-                        push @class, 'thumb' if $item->{icon}{thumb};
-                    %>
-                    class="<%= join ' ', @class =%>"
                 <% } =%>
                 <% if( defined $item->{width} ) { =%>
                     width="<%= $item->{width} =%>"

@@ -84,6 +84,10 @@ server {
     # Default: /4c65c292edec4b708679606990be8ce3
     set $MIME_PREFIX            "/4c65c292edec4b708679606990be8ce3";
 
+    # Prefix for URI to response directory archive.
+    # Default: /4c65c292edec4b708679606990be8ce3
+    set $MIME_PREFIX            "/4c65c292edec4b708679606990be8ce3";
+
     # RULES ####################################################################
 
     location /5e4a8c2055fc441e97dd21c1b33b72f8 {
