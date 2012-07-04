@@ -4,6 +4,7 @@
     my @class = ('item');
     push @class, $item->{mime}->mediaType if defined $item->{mime};
     push @class, 'thumb' if defined $item->{icon} and $item->{icon}{thumb};
+    push @class, $item->{class} if defined $item->{class};
 %>
 <div class="<%= join ' ', @class =%>">
     <a href="<%= $item->{href} =%>">

@@ -58,6 +58,7 @@ our %CONFIG;
 use constant ICON_FOLDER    => '/folder.png';
 use constant ICON_UPDIR     => '/updir.png';
 use constant ICON_FAVICON   => '/favicon.png';
+use constant ICON_ARCHIVE   => '/archive.png';
 
 # MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
@@ -152,6 +153,9 @@ sub show_index($)
 
     # Send updir link if need
     $r->print( _get_index_updir($mt, $r->uri) );
+
+    $r->print( _get_index_archive($mt, $r->uri) );
+#    _escape_path($r->filename)) );
 
     # Get directory index
     my $mask  = File::Spec->catfile( _escape_path($r->filename), '*' );
@@ -617,7 +621,8 @@ sub _get_variables
                ICON_QUALITY_LEVEL
                CACHE_PATH           CACHE_MODE      CACHE_PREFIX
                TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX
-               MIME_PREFIX);
+               MIME_PREFIX
+               ARCHIVE_PREFIX);
 
     # Fix value
     $CONFIG{CACHE_MODE} = oct $CONFIG{CACHE_MODE};
@@ -666,21 +671,65 @@ sub _get_index_updir($$) {
     # make link on updir
     my @updir = File::Spec->splitdir( $url );
     pop @updir;
-    my $updir = _escape_url( File::Spec->catdir( @updir ) );
-    undef @updir;
+    my $href = _escape_url( File::Spec->catdir( @updir ) );
 
     # Send updir icon
     my %item = (
         path        => File::Spec->updir,
         filename    => File::Spec->updir,
-        href        => $updir,
+        href        => $href,
         icon        => {
             href    => _escape_url( $CONFIG{ICONS_PREFIX}, ICON_UPDIR ),
         },
+        class       => 'updir',
     );
 
     return $mt->render( _template('item'), item => \%item );
 }
+
+sub _get_index_archive($$) {
+    my ($mt, $url) = @_;
+
+    my @dir = File::Spec->splitdir( $url );
+    my $filename = $dir[-1] || 'AllGallery';
+    $filename .= '.tar.bz';
+    my $href = _escape_url(
+        $CONFIG{ARCHIVE_PREFIX},
+        File::Spec->catfile( @dir, $filename )
+    );
+
+     # Send updir icon
+    my %item = (
+        path        => $filename,
+        filename    => $filename,
+        href        => $href,
+        icon        => {
+            href    => _escape_url( $CONFIG{ICONS_PREFIX}, ICON_ARCHIVE ),
+        },
+        class       => 'archive',
+    );
+
+    return $mt->render( _template('item'), item => \%item );
+}
+
+#sub _get_index_archive($$) {
+#    my ($mt, $path) = @_;
+#
+#    # Full file read
+#    local $/;
+#
+#    # Get image params
+#    open my $pipe1, '-|:raw',
+#        '/usr/bin/tar',
+#        '--create',
+#        '--force-local',
+#        '--bzip2',
+#        '--exclude-caches-all',
+#        '--exclude-vcs',
+#        $path;
+#    my $params = <$pipe1> || '';
+#    close $pipe1;
+#}
 
 sub _get_index_item($$$) {
     my ($mt, $url, $path) = @_;

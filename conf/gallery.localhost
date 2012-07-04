@@ -85,8 +85,8 @@ server {
     set $MIME_PREFIX            "/4c65c292edec4b708679606990be8ce3";
 
     # Prefix for URI to response directory archive.
-    # Default: /4c65c292edec4b708679606990be8ce3
-    set $MIME_PREFIX            "/4c65c292edec4b708679606990be8ce3";
+    # Default: /5f6d2e769f32489d86546fa9c5068ca9
+    set $ARCHIVE_PREFIX         "/5f6d2e769f32489d86546fa9c5068ca9";
 
     # RULES ####################################################################
 
@@ -113,6 +113,14 @@ server {
             try_files
                 /gnome/48x48/places/folder.png
                 /gallery/folder.png
+                =404;
+        }
+        location = /5e4a8c2055fc441e97dd21c1b33b72f8/archive.png {
+            root /usr/share/icons/;
+            # You can add path to find you own folder image in your distro
+            try_files
+                /gnome/48x48/mimetypes/tar.png
+                /gallery/archive.png
                 =404;
         }
     }
