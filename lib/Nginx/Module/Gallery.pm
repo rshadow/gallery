@@ -39,9 +39,9 @@ Example of nginx server section:
 
 This module not for production servers! But for single user usage.
 Gallery don`t use nginx event machine, so one nginx worker per connect
-(typically 8) used for slow create icons!
+(typically 8) used for slow create thumbnails!
 
-All icons cached on first request. Next show will be more fast.
+All thumbnails cached on first request. Next show will be more fast.
 
 =cut
 
@@ -54,7 +54,7 @@ our $VERSION = 0.2.4;
 
 our %CONFIG;
 
-# Fixed icons
+# Fixed thumbnails
 use constant ICON_FOLDER    => '/folder.png';
 use constant ICON_UPDIR     => '/updir.png';
 use constant ICON_FAVICON   => '/favicon.png';
@@ -82,7 +82,7 @@ our $mime_unknown   = MIME::Type->new(
     type        => 'x-unknown/x-unknown'
 );
 
-# Default mime for thumbnails and icons
+# Default mime for thumbnails
 our $mime_png   = $mimetypes->mimeTypeOf( 'png' );
 
 =head1 HANDLERS
