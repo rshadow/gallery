@@ -152,20 +152,13 @@ sub show_index($)
     # Mime type
     our %icon;
 
-    # Make title from path
-    my @tpath =  File::Spec->splitdir( $r->uri );
-    shift @tpath;
-    push @tpath, '/' unless @tpath;
-    my $title = 'Gallery - ' . join ' : ', @tpath;
-    undef @tpath;
-
     # Send top of index page
     $r->send_http_header("text/html; charset=utf-8");
     $r->print(
         $mt->render(
             _template('top'),
             path    => $CONFIG{TEMPLATE_PATH},
-            title   => $title,
+            title   =>  _make_title( $r->uri ),
             size    => $CONFIG{ICON_MAX_DIMENSION},
             favicon => {
                 icon => {
@@ -716,6 +709,21 @@ sub _get_variables
                TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX
                MIME_PREFIX);
     return 1;
+}
+
+=head2 _make_title $url
+
+Make title from url
+
+=cut
+
+sub _make_title($)
+{
+    my ($url) = @_;
+    my @tpath =  File::Spec->splitdir( $url );
+    @tpath = grep {$_} @tpath;
+    push @tpath, '/' unless @tpath;
+    return 'Gallery - ' . join ' : ', @tpath;
 }
 
 1;
