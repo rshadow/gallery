@@ -128,7 +128,7 @@ server {
     # Send MIME icons directly from nginx
     # Default prefix: 4c65c292edec4b708679606990be8ce3
     # You can change this prefix if you have directory with same name
-    location ~ /4c65c292edec4b708679606990be8ce3/ {
+    location /4c65c292edec4b708679606990be8ce3 {
         rewrite /[a-z0-9]*/(.*) /$1 break;
         root /usr/share/icons/;
         try_files
@@ -178,14 +178,21 @@ server {
     # Send thumbnails directly from nginx
     # Default prefix: abdd1ac22dcd41208fb629d24a8ea018
     # You can change this prefix if you have directory with same name
-    location ~ /abdd1ac22dcd41208fb629d24a8ea018/ {
+    location /abdd1ac22dcd41208fb629d24a8ea018 {
         rewrite /[a-z0-9]*/(.*) /$1 break;
         root $CACHE_PATH$IMAGE_ROOT;
     }
 
     # Derectory index handler
+    location /5f6d2e769f32489d86546fa9c5068ca9 {
+        rewrite /[a-z0-9]*/(.*) /$1 break;
+        root $IMAGE_ROOT;
+        perl  Nginx::Module::Gallery::archive;
+    }
+
+    # Derectory index handler
     location / {
         root $IMAGE_ROOT;
-        perl  Nginx::Module::Gallery::handler;
+        perl  Nginx::Module::Gallery::index;
     }
 }

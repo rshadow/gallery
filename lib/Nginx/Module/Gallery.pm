@@ -89,13 +89,13 @@ our $mime_png   = $mimetypes->mimeTypeOf( 'png' );
 
 =cut
 
-=head2 handler $r
+=head2 index $r
 
-Main loop handler
+Directory index handler
 
 =cut
 
-sub handler($)
+sub index($)
 {
     my $r = shift;
 
@@ -115,6 +115,28 @@ sub handler($)
     return show_index($r);
 }
 
+=head2 archive $r
+
+Online archive response
+
+=cut
+
+sub archive($)
+{
+    my $r = shift;
+
+    # Get configuration variables
+    _get_variables($r);
+
+    # Stop unless GET or HEAD
+    return HTTP_BAD_REQUEST unless grep {$r->request_method eq $_} qw{GET HEAD};
+    # Stop if header only
+    return OK if $r->header_only;
+
+    # send archive to client
+    return show_archive($r);
+}
+
 =head1 FUNCTIONS
 
 =cut
@@ -127,7 +149,7 @@ Send image to client
 
 sub show_image($)
 {
-    my $r = shift;
+    my ($r) = @_;
     $r->send_http_header;
     $r->sendfile( $r->filename );
     return OK;
@@ -141,7 +163,7 @@ Send directory index to client
 
 sub show_index($)
 {
-    my $r = shift;
+    my ($r) = @_;
 
     # Templates
     my $mt = Mojo::Template->new;
@@ -155,7 +177,6 @@ sub show_index($)
     $r->print( _get_index_updir($mt, $r->uri) );
 
     $r->print( _get_index_archive($mt, $r->uri) );
-#    _escape_path($r->filename)) );
 
     # Get directory index
     my $mask  = File::Spec->catfile( _escape_path($r->filename), '*' );
@@ -166,6 +187,35 @@ sub show_index($)
 
     # Send bottom of index page
     $r->print( _get_index_bottom($mt) );
+
+    return OK;
+}
+
+sub show_archive($)
+{
+    my ($r) = @_;
+
+    my ($filename, $dir) = File::Basename::fileparse( $r->filename );
+
+    # Get image params
+    open my $pipe1, '-|:raw',
+        '/bin/tar',
+        '--create',
+        '--force-local',
+        '--bzip2',
+        '--exclude-caches-all',
+        '--exclude-vcs',
+        '--directory', $dir,
+        '.'
+            or return HTTP_NOT_FOUND;
+
+    $r->header_out("Content-Encoding", 'bzip2');
+    $r->send_http_header("application/x-tar");
+
+    while(my $data = <$pipe1>) {
+        $r->print( $data );
+    }
+    close $pipe1;
 
     return OK;
 }
@@ -711,25 +761,6 @@ sub _get_index_archive($$) {
 
     return $mt->render( _template('item'), item => \%item );
 }
-
-#sub _get_index_archive($$) {
-#    my ($mt, $path) = @_;
-#
-#    # Full file read
-#    local $/;
-#
-#    # Get image params
-#    open my $pipe1, '-|:raw',
-#        '/usr/bin/tar',
-#        '--create',
-#        '--force-local',
-#        '--bzip2',
-#        '--exclude-caches-all',
-#        '--exclude-vcs',
-#        $path;
-#    my $params = <$pipe1> || '';
-#    close $pipe1;
-#}
 
 sub _get_index_item($$$) {
     my ($mt, $url, $path) = @_;
