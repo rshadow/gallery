@@ -66,6 +66,9 @@ use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 # Buffer size for output archive to client
 use constant ARCHIVE_BUFFER_SIZE => 4096;
 
+# Timeout for index create
+use constant EVENT_TIMEOUT  => 10;
+
 use nginx 1.1.11;
 
 use Mojo::Template;
@@ -87,6 +90,10 @@ our $mime_unknown   = MIME::Type->new(
 
 # Default mime for thumbnails
 our $mime_png   = $mimetypes->mimeTypeOf( 'png' );
+
+# Templates
+our $mt = Mojo::Template->new;
+$mt->encoding('UTF-8');
 
 =head1 HANDLERS
 
@@ -160,7 +167,7 @@ sub show_image($)
 
 =head2 show_index
 
-Send directory index to client
+Send directory index to client. Try do it like event base, but use sleep.
 
 =cut
 
@@ -168,31 +175,84 @@ sub show_index($)
 {
     my ($r) = @_;
 
-    # Templates
-    my $mt = Mojo::Template->new;
-    $mt->encoding('UTF-8');
-
-    # Send top of index page
     $r->send_http_header("text/html; charset=utf-8");
-    $r->print( _get_index_top($mt, $r->uri) );
+    # Send top of index page
+    $r->sleep(EVENT_TIMEOUT, sub{
+        $_[0]->print( _get_index_top($_[0]->uri) );
+        # Send updir link if need
+        $_[0]->sleep(EVENT_TIMEOUT, sub{
+            $_[0]->print( _get_index_updir($_[0]->uri) );
+            # Send directory archive link
+            $_[0]->sleep(EVENT_TIMEOUT, sub{
+                $_[0]->print( _get_index_archive($_[0]->uri) );
+                # Get directory index
+                $_[0]->sleep(EVENT_TIMEOUT, sub{
+                    my $mask  =
+                        File::Spec->catfile(_escape_path($_[0]->filename), '*');
+                    my @index =
+                        sort {-d $b cmp -d $a}
+                        sort {uc $a cmp uc $b}
+                        glob $mask;
+                    if( @index ) {
+                        $_[0]->variable('gallery_index', join("\n\r", @index));
+                        # Send directory index
+                        $_[0]->sleep(EVENT_TIMEOUT, \&_make_icon);
+                    } else {
+                        # Send bottom of index page
+                        $_[0]->print( _get_index_bottom() );
+                    }
+                    return OK;
+                });
+                return OK;
+            });
+            return OK;
+        });
+        return OK;
+    });
+    return OK;
+}
 
-    # Send updir link if need
-    $r->print( _get_index_updir($mt, $r->uri) );
+=head2 _make_icon
 
-    $r->print( _get_index_archive($mt, $r->uri) );
+Send index item to client, or init send index bottom.
 
-    # Get directory index
-    my $mask  = File::Spec->catfile( _escape_path($r->filename), '*' );
-    my @index = sort {-d $b cmp -d $a} sort {uc $a cmp uc $b} glob $mask;
+=cut
 
-    # Send index
-    $r->print( _get_index_item($mt, $r->uri, $_) ) for @index;
+sub _make_icon {
+    my ($r) = @_;
 
-    # Send bottom of index page
-    $r->print( _get_index_bottom($mt) );
+    my $index   = $r->variable('gallery_index');
+    my $url = $r->uri;
+
+    my @index = split "\n\r", $index;
+    return OK unless @index;
+
+    my $path  = shift @index;
+
+    $r->print( _get_index_item($url, $path) ) ;
+
+    if( @index ) {
+        $r->variable('gallery_index', join("\n\r", @index));
+        $r->sleep(EVENT_TIMEOUT, \&_make_icon);
+        return OK;
+    }
+    else {
+        $r->sleep(EVENT_TIMEOUT, sub {
+            my ($r) = @_;
+            $r->print( _get_index_bottom() );
+            return OK;
+        });
+        return OK;
+    }
 
     return OK;
 }
+
+=head2 show_archive
+
+Sent archive file to client
+
+=cut
 
 sub show_archive($)
 {
@@ -465,16 +525,19 @@ sub _save_thumb($)
 
     my ($filename, $dir) = File::Basename::fileparse($icon->{orig}{path});
 
-    # Create dirs
-    my $error;
-    make_path(
-        File::Spec->catdir($CONFIG{CACHE_PATH}, $dir),
-        {
-            mode    => $CONFIG{CACHE_MODE},
-            error   => \$error,
-        }
-    );
-    return if @$error;
+    # Create dirs unless exists
+    my $path = File::Spec->catdir($CONFIG{CACHE_PATH}, $dir);
+    unless(-d $path) {
+        my $error;
+        make_path(
+            $path,
+            {
+                mode    => oct $CONFIG{CACHE_MODE},
+                error   => \$error,
+            }
+        );
+        return if @$error;
+    }
 
     my $icon_filename = sprintf( '%s.%dx%d.%s',
         _get_md5_image( $icon->{orig}{path} ),
@@ -679,10 +742,6 @@ sub _get_variables
                TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX
                MIME_PREFIX
                ARCHIVE_PREFIX);
-
-    # Fix value
-    $CONFIG{CACHE_MODE} = oct $CONFIG{CACHE_MODE};
-
     return 1;
 }
 
@@ -701,8 +760,8 @@ sub _make_title($)
     return 'Gallery - ' . join ' : ', @tpath;
 }
 
-sub _get_index_top($$) {
-    my ($mt, $url) = @_;
+sub _get_index_top($) {
+    my ($url) = @_;
 
     return
         $mt->render(
@@ -718,8 +777,8 @@ sub _get_index_top($$) {
         );
 }
 
-sub _get_index_updir($$) {
-    my ($mt, $url) = @_;
+sub _get_index_updir($) {
+    my ($url) = @_;
 
     # Add updir for non root directory
     return '' if $url eq '/';
@@ -743,8 +802,8 @@ sub _get_index_updir($$) {
     return $mt->render( _template('item'), item => \%item );
 }
 
-sub _get_index_archive($$) {
-    my ($mt, $url) = @_;
+sub _get_index_archive($) {
+    my ($url) = @_;
 
     my @dir = File::Spec->splitdir( $url );
     my $filename = $dir[-1] || 'AllGallery';
@@ -768,8 +827,8 @@ sub _get_index_archive($$) {
     return $mt->render( _template('item'), item => \%item );
 }
 
-sub _get_index_item($$$) {
-    my ($mt, $url, $path) = @_;
+sub _get_index_item($$) {
+    my ($url, $path) = @_;
 
     # Get filename
     my ($filename, $dir) = File::Basename::fileparse($path);
@@ -824,8 +883,7 @@ sub _get_index_item($$$) {
     return $mt->render( _template('item'), item => \%item );
 }
 
-sub _get_index_bottom($) {
-    my ($mt) = @_;
+sub _get_index_bottom() {
     return $mt->render( _template('bottom') )
 }
 
