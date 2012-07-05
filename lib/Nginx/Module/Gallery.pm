@@ -63,6 +63,9 @@ use constant ICON_ARCHIVE   => '/archive.png';
 # MIME type of unknown files
 use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 
+# Buffer size for output archive to client
+use constant ARCHIVE_BUFFER_SIZE => 4096;
+
 use nginx 1.1.11;
 
 use Mojo::Template;
@@ -196,6 +199,9 @@ sub show_archive($)
     my ($r) = @_;
 
     my ($filename, $dir) = File::Basename::fileparse( $r->filename );
+
+    # Set read buffer size
+    local $/ = ARCHIVE_BUFFER_SIZE;
 
     # Get image params
     open my $pipe1, '-|:raw',
