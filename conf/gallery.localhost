@@ -183,7 +183,7 @@ server {
         root $CACHE_PATH$IMAGE_ROOT;
     }
 
-    # Derectory index handler
+    # Directory archive handler
     location /5f6d2e769f32489d86546fa9c5068ca9 {
         rewrite /[a-z0-9]*/(.*) /$1 break;
         root $IMAGE_ROOT;
