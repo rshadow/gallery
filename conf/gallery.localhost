@@ -34,10 +34,13 @@ server {
 #    ssl_prefer_server_ciphers on;
 
     # VARIABLES ################################################################
+    # Remember: if you change some $..._PREFIX variable, you need change it`s
+    # rules (section RULES) too
+    ############################################################################
 
     # Root path of your gallery. Set it please.
     # Default: /usr/share/images
-    set $IMAGE_ROOT				"/home/rubin/Изображения";
+    set $IMAGE_ROOT             "/home/rubin/Изображения";
 
     # Max icon dimension. In pixels. All thumbnails well be resized to
     # this dimension.
@@ -62,7 +65,7 @@ server {
 
     # Prefix for URI to response thumbnails from cache.
     # Default: /abdd1ac22dcd41208fb629d24a8ea018
-    set $CACHE_PREFIX			"/abdd1ac22dcd41208fb629d24a8ea018";
+    set $CACHE_PREFIX           "/abdd1ac22dcd41208fb629d24a8ea018";
 
     # Mode for created thumbnails.
     # Default: 0755
@@ -88,7 +91,12 @@ server {
     # Default: /5f6d2e769f32489d86546fa9c5068ca9
     set $ARCHIVE_PREFIX         "/5f6d2e769f32489d86546fa9c5068ca9";
 
+
     # RULES ####################################################################
+    # You don`t need edit this rules, except if you change some prefix variable
+    # (named $..._PREFIX in section VARIABLES).
+    # You can add you own rules for defaul icons.
+    ############################################################################
 
     location /5e4a8c2055fc441e97dd21c1b33b72f8 {
         location = /5e4a8c2055fc441e97dd21c1b33b72f8/favicon.png {
