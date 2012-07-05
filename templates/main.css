@@ -53,12 +53,12 @@ div.item.thumb img{
     border: 1px solid #fff;
 }
 footer {
-    color: lightgrey;
+    color: rgba(0,0,0,0.4);
     font-size: smaller;
     clear: left;
     margin-top: 250px;
     padding-top: 10pt;
 }
 footer:hover {
-    color: black;
+    color: #000;
 }
