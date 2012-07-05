@@ -739,9 +739,8 @@ sub _get_variables
         for qw(ICON_MAX_DIMENSION   ICON_MAX_SIZE   ICON_COMPRESSION_LEVEL
                ICON_QUALITY_LEVEL
                CACHE_PATH           CACHE_MODE      CACHE_PREFIX
-               TEMPLATE_PATH        ICONS_PATH      ICONS_PREFIX
-               MIME_PREFIX
-               ARCHIVE_PREFIX);
+               TEMPLATE_PATH
+               ICONS_PREFIX         MIME_PREFIX     ARCHIVE_PREFIX);
     return 1;
 }
 

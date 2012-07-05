@@ -75,10 +75,6 @@ server {
     # Default: /usr/local/gallery/templates
     set $TEMPLATE_PATH          "/home/rubin/workspace/gallery/templates";
 
-    # Path for MIME and other icons.
-    # Default: /usr/share/icons/gallery
-    set $ICONS_PATH              "/home/rubin/workspace/gallery/icons";
-
     # Prefix for URI to response common icons.
     # Default: /5e4a8c2055fc441e97dd21c1b33b72f8
     set $ICONS_PREFIX           "/5e4a8c2055fc441e97dd21c1b33b72f8";
