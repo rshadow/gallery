@@ -1,43 +1,47 @@
 % my (%opts) = @_;
-% my $item = $opts{item};
 <%
     my @class = ('item');
-    push @class, $item->{mime}->mediaType if defined $item->{mime};
-    push @class, 'thumb' if defined $item->{icon} and $item->{icon}{thumb};
-    push @class, $item->{class} if defined $item->{class};
+    push @class, $opts{item}{mime}->mediaType
+        if defined $opts{item}{mime};
+    push @class, 'thumb'
+        if defined $opts{item}{icon} and $opts{item}{icon}{thumb};
+    push @class, $opts{item}{class}
+        if defined $opts{item}{class};
 %>
 <div class="<%= join ' ', @class =%>">
-    <a href="<%= $item->{href} =%>">
-        <% if( defined $item->{icon} ) { =%>
+    <a href="<%= $opts{item}{href} =%>">
+        <% if( defined $opts{item}{icon} ) { =%>
             <img
-                <% if( defined $item->{mime} ) { =%>
-                    title="<%= "$item->{mime}" =%>"
+                <% if( defined $opts{item}{mime} ) { =%>
+                    title="<%= "$opts{item}{mime}" =%>"
                 <% } =%>
-                <% if( defined $item->{width} ) { =%>
-                    width="<%= $item->{width} =%>"
+                <% if( defined $opts{item}{width} ) { =%>
+                    width="<%= $opts{item}{width} =%>"
                 <% } =%>
-                <% if( defined $item->{height} ) { =%>
-                    height="<%= $item->{height} =%>"
+                <% if( defined $opts{item}{height} ) { =%>
+                    height="<%= $opts{item}{height} =%>"
                 <% } =%>
-                src="<%= $item->{icon}{href} =%>"
+                src="<%= $opts{item}{icon}{href} =%>"
             />
         <% } =%>
-        <% if( defined $item->{filename} ) { =%>
+        <% if( defined $opts{item}{filename} ) { =%>
             <br/>
             <details class="filename" open="open">
-                <%= $item->{filename} =%>
+                <%= $opts{item}{filename} =%>
             </details>
         <% } =%>
-        <% if($item->{image}{width} and $item->{image}{height} ) { =%>
+        <% if($opts{item}{image}{width} and $opts{item}{image}{height} ) { =%>
             <br/>
             <details class="extended wxh" open="open">
-                <%= $item->{image}{width} %> x <%= $item->{image}{height} %>
+                <%= $opts{item}{image}{width} %>
+                x
+                <%= $opts{item}{image}{height} %>
             </details>
         <% } =%>
-        <% if( defined $item->{size} ) { =%>
+        <% if( defined $opts{item}{size} ) { =%>
             <br/>
             <details class="extended size" open="open">
-                <%= $item->{size} || '' =%>
+                <%= $opts{item}{size} || '' =%>
            </details>
         <% } =%>
     </a>
