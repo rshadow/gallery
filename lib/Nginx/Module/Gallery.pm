@@ -67,7 +67,7 @@ use constant MIME_UNKNOWN   => 'x-unknown/x-unknown';
 use constant ARCHIVE_BUFFER_SIZE => 4096;
 
 # Timeout for index create
-use constant EVENT_TIMEOUT  => 10;
+use constant EVENT_TIMEOUT  => 1;
 
 use nginx 1.1.11;
 
