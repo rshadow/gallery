@@ -20,3 +20,4 @@ require_ok 'Mojo::Template';
 require_ok 'MIME::Base64';
 require_ok 'MIME::Types';
 require_ok 'File::Path';
+require_ok 'Image::Magick';

@@ -80,6 +80,7 @@ use File::Temp qw(tempfile);
 use File::Find;
 use Digest::MD5 'md5_hex';
 use URI::Escape qw(uri_escape);
+use Image::Magick;
 
 # MIME definition objects
 our $mimetypes = MIME::Types->new;
@@ -435,41 +436,29 @@ sub _get_image_thumb($)
 {
     my ($path) = @_;
 
-    # Full file read
-    local $/;
-
-    # Get image params
-    open my $pipe1, '-|:utf8',
-        '/usr/bin/identify',
-        '-format', '%wx%h %b',
-        $path;
-    my $params = <$pipe1> || '';
-    close $pipe1;
-
+    # Get image and attributes
+    my $image = Image::Magick->new;
+    $image->Read($path);
     my ($image_width, $image_height, $image_size) =
-        $params =~ m/^(\d+)x(\d+)\s+(\d+)[a-zA-Z]*\s*$/;
+        $image->Get("width", "height", "filesize");
 
-    open my $pipe2, '-|:raw',
-        '/usr/bin/convert',
-        '-quiet',
-        '-strip',
-        '-delete', '1--1',
-        $path,
-        '-auto-orient',
-        '-quality', $CONFIG{ICON_COMPRESSION_LEVEL},
-        '-thumbnail',
-        $CONFIG{ICON_MAX_DIMENSION}.'x'.$CONFIG{ICON_MAX_DIMENSION}.'>',
-        '-colorspace', 'RGB',
-        '-';
-    my $raw = <$pipe2>;
-    close $pipe2;
-    return unless $raw;
+    # Save image on disk:
+    # Remove original comments, EXIF, etc.
+    $image->Strip;
+    # make tumbnail
+    $image->Thumbnail(geometry =>
+        $CONFIG{ICON_MAX_DIMENSION}.'x'.$CONFIG{ICON_MAX_DIMENSION}.'>');
+    # Set colors
+#    $image->Quantize(colorspace => 'RGB');
+    # Orient
+    $image->AutoOrient;
+    # Some compression
+    $image->Set(quality => $CONFIG{ICON_COMPRESSION_LEVEL});
 
     # Get mime type as icon type
     my $mime = $mime_png || $mime_unknown;
 
     my %result = (
-        raw     => $raw,
         mime    => $mime,
         orig    => {
             path    => $path,
@@ -477,6 +466,12 @@ sub _get_image_thumb($)
             heigth  => $image_height,
             size    => $image_size,
         },
+        save    => sub {
+            my ($cache) = @_;
+            my $msg = $image->Write( $cache );
+            warn "$msg" if "$msg";
+            return 1;
+        }
     );
 
     return wantarray ?%result :\%result;
@@ -555,9 +550,13 @@ sub _save_thumb($)
         $CONFIG{CACHE_PATH}, $dir, $icon_filename );
 
     # Store icon on disk
-    open my $f, '>:raw', $cache or return;
-    print $f $icon->{raw};
-    close $f;
+    if( $icon->{save} ) {
+        $icon->{save}->( $cache );
+    } else {
+        open my $f, '>:raw', $cache or return;
+        print $f $icon->{raw};
+        close $f;
+    }
 
     # Set path and flag
     $icon->{path}       = $cache;
