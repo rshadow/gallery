@@ -443,13 +443,17 @@ sub _get_image_thumb($)
         $image->Get("width", "height", "filesize");
 
     # Save image on disk:
+    # Remove any sequences (for GIF)
+    for (my $x = 1; $image->[$x]; $x++) {
+        undef $image->[$x];
+    }
     # Remove original comments, EXIF, etc.
     $image->Strip;
     # make tumbnail
     $image->Thumbnail(geometry =>
         $CONFIG{ICON_MAX_DIMENSION}.'x'.$CONFIG{ICON_MAX_DIMENSION}.'>');
     # Set colors
-#    $image->Quantize(colorspace => 'RGB');
+    $image->Quantize(colorspace => 'RGB');
     # Orient
     $image->AutoOrient;
     # Some compression
@@ -469,6 +473,7 @@ sub _get_image_thumb($)
         save    => sub {
             my ($cache) = @_;
             my $msg = $image->Write( $cache );
+            undef $image;
             warn "$msg" if "$msg";
             return 1;
         }
