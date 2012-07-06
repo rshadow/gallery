@@ -185,6 +185,7 @@ sub show_index($)
             # Send directory archive link
             $_[0]->sleep(EVENT_TIMEOUT, sub{
                 $_[0]->print( _get_index_archive($_[0]->uri) );
+                $_[0]->flush;
                 # Get directory index
                 $_[0]->sleep(EVENT_TIMEOUT, sub{
                     my $mask  =
@@ -200,6 +201,7 @@ sub show_index($)
                     } else {
                         # Send bottom of index page
                         $_[0]->print( _get_index_bottom() );
+                        $_[0]->flush;
                     }
                     return OK;
                 });
@@ -230,6 +232,7 @@ sub _make_icon {
     my $path  = shift @index;
 
     $r->print( _get_index_item($url, $path) ) ;
+    $r->flush;
 
     if( @index ) {
         $r->variable('gallery_index', join("\n\r", @index));
@@ -240,6 +243,7 @@ sub _make_icon {
         $r->sleep(EVENT_TIMEOUT, sub {
             my ($r) = @_;
             $r->print( _get_index_bottom() );
+            $r->flush;
             return OK;
         });
         return OK;
