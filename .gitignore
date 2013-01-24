@@ -1,3 +1,8 @@
-/.project
+.project
 .includepath
 cache/*
+Makefile
+Makefile.old
+MANIFEST.bak
+META.yml
+MYMETA.yml
