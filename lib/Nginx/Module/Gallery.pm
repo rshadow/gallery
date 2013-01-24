@@ -50,7 +50,7 @@ All thumbnails cached on first request. Next show will be more fast.
 =cut
 
 # Module version
-our $VERSION = 0.3.0;
+our $VERSION = '0.3.0';
 
 our %CONFIG;
 
@@ -69,7 +69,9 @@ use constant ARCHIVE_BUFFER_SIZE => 4096;
 # Timeout for index create
 use constant EVENT_TIMEOUT  => 1;
 
-use nginx 1.1.11;
+# Nginx module is ugly
+eval{ require nginx; };
+die $@ if $@;
 
 use Mojo::Template;
 use MIME::Types;
